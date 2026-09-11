@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='foodie-browser-') as temporary:
                 raise RuntimeError('Test server failed to start')
             env = dict(base_env)
             env.update(MAD_TEST_URL='http://'+startup['address'], MAD_TEST_PASSWORD=values['FOODIE_PASSWORD'], MAD_TEST_BOT_TOKEN=values['FOODIE_BOT_TOKEN'], MAD_TEST_APK=str(apk), MAD_SCREENSHOTS=os.environ.get('MAD_SCREENSHOTS',str(home/'screenshots')))
-            tests = ['browser.cjs','voice-presentation.cjs','download.cjs'] if language=='da' else ['english.cjs']
+            tests = ['browser.cjs','voice-presentation.cjs','download.cjs','android-update.cjs'] if language=='da' else ['english.cjs']
             for name in tests:
                 subprocess.run(['node',str(root/'test'/name)],cwd=str(root),env=env,check=True)
         finally:

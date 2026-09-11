@@ -1,9 +1,14 @@
 package web
 
 import (
+	"archive/zip"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/jonasrappy/foodie/internal/auth"
@@ -93,4 +98,52 @@ func (s *Server) androidDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("Vary", "Cookie, Authorization")
 	http.ServeContent(w, r, androidFilename, info.ModTime(), file)
+}
+
+// Read the version from the APK itself, so publishing a single file atomically
+// also publishes its update information. No separate version file can go stale.
+func (s *Server) androidRelease(w http.ResponseWriter, r *http.Request) {
+	role := s.auth.Authenticate(r.Header.Get("Authorization"))
+	if role == auth.Unauthenticated {
+		s.problem(w, 401, "Log ind for at hente Android-appen.")
+		return
+	}
+	if role != auth.Device {
+		s.problem(w, 403, "APK-download kræver login i appen.")
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		w.WriteHeader(405)
+		return
+	}
+	apk, err := zip.OpenReader(filepath.Join(filepath.Dir(s.publicDir), "downloads", androidFilename))
+	if err != nil {
+		w.WriteHeader(404)
+		return
+	}
+	defer apk.Close()
+	for _, file := range apk.File {
+		if file.Name != "assets/release.json" {
+			continue
+		}
+		reader, err := file.Open()
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
+		defer reader.Close()
+		var release struct {
+			Code int64  `json:"version_code"`
+			Name string `json:"version_name"`
+		}
+		err = json.NewDecoder(io.LimitReader(reader, 1024)).Decode(&release)
+		if err != nil || release.Code < 1 || release.Code >= 2100000000 || !regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(release.Name) {
+			s.fail(w, r, fmt.Errorf("invalid Android release metadata"))
+			return
+		}
+		respond(w, 200, release)
+		return
+	}
+	w.WriteHeader(404)
 }

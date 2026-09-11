@@ -24,8 +24,8 @@ try:
     app_id = values.get('ANDROID_APPLICATION_ID', 'app.foodie.mobile')
     if not re.fullmatch(r'[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+', app_id):
         raise ValueError('Invalid ANDROID_APPLICATION_ID')
-    version = values.get('ANDROID_VERSION_NAME', '1.3.1')
-    code = values.get('ANDROID_VERSION_CODE', '7')
+    version = values.get('ANDROID_VERSION_NAME', '1.3.2')
+    code = values.get('ANDROID_VERSION_CODE', '8')
     if not re.fullmatch(r'\d+\.\d+\.\d+', version) or not code.isdigit() or not 0 < int(code) < 2100000000:
         raise ValueError('Invalid Android version')
     sdk = values.get('ANDROID_SDK_ROOT') or values.get('ANDROID_HOME', '')
@@ -47,11 +47,12 @@ try:
     language_assets=build / 'language-assets'
     language_assets.mkdir(exist_ok=True)
     shutil.copyfile(str(root / 'internal/i18n/locales' / (language+'.json')),str(language_assets / 'i18n.json'))
+    (language_assets / 'release.json').write_text(json.dumps({'version_code':int(code),'version_name':version}))
     dest = build / 'src' / app_id.replace('.', '/')
     dest.mkdir(parents=True)
     for source in (root / 'android/src/app/foodie/mobile').glob('*.java'):
         (dest / source.name).write_text(source.read_text().replace('app.foodie.mobile', app_id))
-    (dest / 'BuildConfig.java').write_text('package {};\nfinal class BuildConfig {{ static final String SITE_URL={}; static final String VERSION_NAME={}; }}\n'.format(app_id,json.dumps(site),json.dumps(version)))
+    (dest / 'BuildConfig.java').write_text('package {};\nfinal class BuildConfig {{ static final String SITE_URL={}; static final String VERSION_NAME={}; static final int VERSION_CODE={}; }}\n'.format(app_id,json.dumps(site),json.dumps(version),int(code)))
     ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
     manifest = ET.parse(str(root / 'android/AndroidManifest.xml'))
     manifest.getroot().set('package', app_id)

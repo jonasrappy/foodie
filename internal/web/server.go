@@ -147,6 +147,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.login(w, r)
 		return
 	}
+	if r.URL.Path == "/api/android/release" {
+		s.androidRelease(w, r)
+		return
+	}
 	if r.URL.Path == "/api/download/android/session" {
 		s.androidDownloadSession(w, r)
 		return

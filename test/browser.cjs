@@ -8,7 +8,7 @@ const fs = require('node:fs');
   const browser = await chromium.launch({ headless: true, executablePath: process.env.MAD_CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   try {
     const options = { viewport: { width: 1280, height: 800 }, hasTouch: true, serviceWorkers: 'block' };
-    const native = await browser.newContext({ ...options, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-X200) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 MadTablet/3.0' });
+    const native = await browser.newContext({ ...options, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-X200) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 MadTablet/7.0 FoodieAndroid/8' });
     const web = await browser.newContext({ ...options, viewport: { width: 1200, height: 750 } });
     const p = await native.newPage(), p2 = await web.newPage(), errors = [];
     for (const page of [p, p2]) {

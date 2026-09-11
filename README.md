@@ -128,8 +128,8 @@ ANDROID_SDK_ROOT=/path/to/android-sdk
 ANDROID_APPLICATION_ID=app.foodie.mobile
 ANDROID_SIGN_DIR=./.private/android-signing
 ANDROID_KEY_ALIAS=foodie
-ANDROID_VERSION_NAME=1.3.1
-ANDROID_VERSION_CODE=7
+ANDROID_VERSION_NAME=1.3.2
+ANDROID_VERSION_CODE=8
 ```
 
 Use your real HTTPS hostname. Foodie currently expects to be hosted at the origin root, not a subdirectory.
@@ -149,6 +149,16 @@ FOODIE_PUBLISH_APK=1 ./android/build.sh
 ```
 
 The APK is stored at `downloads/foodie.apk`. Browsers download it using a short-lived signed link. No household password or bot token is compiled into the APK. Your configured server URL is necessarily present in your own build; APK files are excluded from Git.
+
+### APK updates
+
+After login, the Android app checks for a newer APK when opened or resumed and once a minute while visible. If one is available, an **Update Foodie** button appears. Nothing is downloaded until you tap it.
+
+Build each release with a higher `ANDROID_VERSION_CODE` and publish it with `FOODIE_PUBLISH_APK=1 ./android/build.sh`. The version information is embedded inside the APK. The server reads that file directly, so a separate release manifest is not needed.
+
+Foodie downloads the update through Android's download manager, checks that its application ID and signing certificate match the installed app, then opens Android's installation prompt. On Android 8 and newer, the first update asks you to allow installations from Foodie. Android still requires your confirmation to install. Login and lists are preserved.
+
+Versions before 1.3.2 need one manual update through the tablet's browser to install this feature. Their update button explains this step. Changes to the web interface continue to load automatically without an APK update.
 
 ### Voice and screen wake
 

@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
     private static WeakReference<MainActivity> voiceHost = new WeakReference<>(null);
     private WebView web;
     private SharedPreferences prefs;
+    private AppUpdater updater;
     private boolean resumed, wakeFromVoice;
     private final Handler voiceHandler = new Handler(Looper.getMainLooper());
     private final Runnable pushVoice = this::dispatchVoiceStatus;
@@ -91,6 +92,7 @@ public class MainActivity extends Activity {
         I18n.init(this);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         prefs = getSharedPreferences("kitchen", MODE_PRIVATE);
+        updater = new AppUpdater(this, prefs);
         voiceHost=new WeakReference<>(this);
         applyLockScreen();
         receiveVoiceWake(getIntent());
@@ -130,10 +132,14 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setSupportMultipleWindows(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " MadTablet/7.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " MadTablet/7.0 FoodieAndroid/" + BuildConfig.VERSION_CODE);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
         WebView.setWebContentsDebuggingEnabled(false);
+        web.setDownloadListener((url, agent, disposition, mime, length) -> {
+            Uri uri = Uri.parse(url);
+            if (trustedPage() && trustedOrigin(uri)) updater.start(uri);
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return !request.isForMainFrame() || navigate(request.getUrl()); }
             @Override public boolean shouldOverrideUrlLoading(WebView view, String url) { return navigate(Uri.parse(url)); }
@@ -162,7 +168,10 @@ public class MainActivity extends Activity {
             }
             return true;
         }
-        if (trustedOrigin(uri)) return false;
+        if (trustedOrigin(uri)) {
+            if ("/api/download/android".equals(uri.getPath()) && trustedPage()) { updater.start(uri); return true; }
+            return false;
+        }
         if ("https".equals(uri.getScheme())) { try { startActivity(new Intent(Intent.ACTION_VIEW,uri)); } catch (Exception ignored) {} }
         return true;
     }
@@ -231,6 +240,7 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == AppUpdater.INSTALL_PERMISSION) updater.permissionReturned();
         if (request == 43 || request == 44) voiceHandler.postDelayed(this::startVoice, 250);
     }
     @Override public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
@@ -264,8 +274,8 @@ public class MainActivity extends Activity {
             if(which==6) new AlertDialog.Builder(this).setTitle("Foodie " + BuildConfig.VERSION_NAME).setMessage(I18n.text("Vores indkøbsliste og madønsker.\n\nVælg Foodie som startapp, hvis tabletten skal være en fast køkkenskærm. Du kan altid skifte tilbage via Indstillinger → Vælg fast startapp.\n\nNår låseskærmsvisning er slået til, kan alle med tabletten se og redigere listerne, mens appen er fremme. Andre apps kræver stadig normal oplåsning.\n\nInternet kræves for at hente og gemme lister. Login huskes, indtil husets kode ændres eller appens data slettes.")).setPositiveButton("OK",null).show();
         }).setNegativeButton(I18n.text("Luk"),null).show();
     }
-    @Override protected void onResume() { super.onResume();resumed=true; voiceHandler.removeCallbacks(voiceStatus); voiceHandler.post(voiceStatus); immersive(); if(web!=null) { web.onResume(); web.evaluateJavascript("window.dispatchEvent(new Event('online'))",null); } }
-    @Override protected void onPause() {resumed=false; voiceHandler.removeCallbacks(voiceStatus);voiceHandler.removeCallbacks(pushVoice); if(web!=null) { CookieManager.getInstance().flush(); web.onPause(); } super.onPause(); }
+    @Override protected void onResume() { super.onResume();resumed=true; if(updater!=null)updater.resume(); voiceHandler.removeCallbacks(voiceStatus); voiceHandler.post(voiceStatus); immersive(); if(web!=null) { web.onResume(); web.evaluateJavascript("window.dispatchEvent(new Event('online'))",null); } }
+    @Override protected void onPause() {resumed=false; if(updater!=null)updater.pause(); voiceHandler.removeCallbacks(voiceStatus);voiceHandler.removeCallbacks(pushVoice); if(web!=null) { CookieManager.getInstance().flush(); web.onPause(); } super.onPause(); }
     @Override public void onBackPressed() {
         if(web!=null) web.evaluateJavascript("window.dispatchEvent(new Event('mad-back'))",null);
     }
@@ -278,5 +288,5 @@ public class MainActivity extends Activity {
             getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         }
     }
-    @Override protected void onDestroy() {if(voiceHost.get()==this)voiceHost.clear(); voiceHandler.removeCallbacksAndMessages(null); if(web!=null) web.destroy(); super.onDestroy(); }
+    @Override protected void onDestroy() {if(updater!=null)updater.pause();if(voiceHost.get()==this)voiceHost.clear(); voiceHandler.removeCallbacksAndMessages(null); if(web!=null) web.destroy(); super.onDestroy(); }
 }

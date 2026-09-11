@@ -16,6 +16,8 @@ let downloadPreparation, downloadExpires = 0, downloadFailure = '', downloadRequ
 const additions = new Map(), mutations = new Map();
 try { for (const item of JSON.parse(storage.get('outbox') || '[]')) if (item.request_id && ['shopping', 'meals'].includes(item.kind) && Array.isArray(item.texts)) additions.set(item.request_id, item); } catch {}
 const nativeVersion = Number(navigator.userAgent.match(/MadTablet\/(\d+)/)?.[1] || 0);
+const installedAndroidCode = Number(navigator.userAgent.match(/FoodieAndroid\/(\d+)/)?.[1] || 0);
+let androidUpdateAvailable = false, androidUpdateChecking = false;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const numberFormat = new Intl.NumberFormat(languagePack?.locale || 'en-US', { maximumFractionDigits: 2 });
 function formatAmount(quantity, unit) {
@@ -49,10 +51,11 @@ function showApp() {
   $('voice').hidden = nativeVersion < 3;
   $('wake').hidden = !!nativeVersion || !('wakeLock' in navigator);
   $('install').hidden = !!nativeVersion || matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;
-  prepareAndroidDownload();
+  if (nativeVersion) checkAndroidUpdate(); else prepareAndroidDownload();
   if (nativeVersion >= 6) prepareFoodieAvatar();
 }
 function showLogin() {
+  androidUpdateAvailable = false;
   downloadExpires = 0; $('install').href = '#';
   if (nativeVersion >= 3) location.href = 'mad-app://voice/logout';
   token = null; current = null; deferredState = null; storage.remove('token'); storage.remove('state');
@@ -485,7 +488,7 @@ function prepareAndroidDownload() {
       url.searchParams.set('t', Date.now());
       downloadExpires = Date.now() + data.expires_in * 1000 - 5000;
       link.download = data.filename; link.href = url.href;
-      link.title = t('Hent Android-appen'); downloadFailure = '';
+      link.title = t(androidUpdateAvailable ? 'Opdater Foodie' : 'Hent Android-appen'); downloadFailure = '';
       return true;
     } catch (error) {
       downloadFailure = error.name === 'AbortError' || error instanceof TypeError ? t('Ingen forbindelse. Tryk igen, når nettet er tilbage.') : error.message;
@@ -499,6 +502,9 @@ function prepareAndroidDownload() {
 }
 $('install').addEventListener('click', event => {
   if (!token) { event.preventDefault(); return; }
+  if (nativeVersion && !installedAndroidCode) {
+    event.preventDefault(); $('android-update-dialog').showModal(); return;
+  }
   if (Date.now() >= downloadExpires) {
     event.preventDefault();
     if (downloadRequested) return;
@@ -513,9 +519,32 @@ $('install').addEventListener('click', event => {
   // Android's download manager has no access to the browser's cookies.
   const url = new URL($('install').href); url.searchParams.set('t', Date.now());
   $('install').href = url.href;
-  toast(t('Download starter. Åbn APK-filen fra browserens downloads.'));
+  toast(t(installedAndroidCode ? 'Henter opdatering …' : 'Download starter. Åbn APK-filen fra browserens downloads.'));
 });
 window.addEventListener('appinstalled', () => $('install').hidden = true);
+async function checkAndroidUpdate() {
+  if (!nativeVersion || !token || document.hidden || androidUpdateChecking || !navigator.onLine) return;
+  androidUpdateChecking = true;
+  const deviceToken = token;
+  const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch('/api/android/release', {headers: {Authorization: 'Bearer ' + deviceToken}, cache: 'no-store', signal: controller.signal});
+    if (token !== deviceToken) return;
+    if (response.status === 401) { showLogin(); return; }
+    if (response.status === 404) { androidUpdateAvailable = false; $('install').hidden = true; return; }
+    if (!response.ok) return;
+    const release = await response.json();
+    if (token !== deviceToken || !Number.isSafeInteger(release.version_code) || release.version_code < 1) return;
+    androidUpdateAvailable = release.version_code > installedAndroidCode;
+    const link = $('install'); link.hidden = !androidUpdateAvailable;
+    if (androidUpdateAvailable) {
+      link.querySelector('span').textContent = t('Opdater Foodie');
+      link.setAttribute('aria-label', t('Opdater Foodie'));
+      link.title = t('Opdater Foodie') + ' ' + release.version_name;
+      if (installedAndroidCode) prepareAndroidDownload();
+    }
+  } catch {} finally { clearTimeout(timeout); androidUpdateChecking = false; }
+}
 async function checkWebUpdate() {
   if (updateCheckRunning || document.hidden || !navigator.onLine || !loadedVersion || additions.size || mutations.size) return;
   if (document.activeElement?.matches('input,textarea,select') || document.querySelector('dialog[open]')) return;
@@ -537,12 +566,12 @@ function fitViewport() {
 window.addEventListener('resize', fitViewport); window.visualViewport?.addEventListener('resize', fitViewport); fitViewport();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) { streamController?.abort(); clearTimeout(retryTimer); }
-  else { fitViewport(); enter(); requestWake(); checkWebUpdate(); }
+  else { fitViewport(); enter(); requestWake(); checkWebUpdate(); checkAndroidUpdate(); }
 });
-window.addEventListener('online', () => { enter(); checkWebUpdate(); });
+window.addEventListener('online', () => { enter(); checkWebUpdate(); checkAndroidUpdate(); });
 window.addEventListener('offline', () => status(false));
 window.addEventListener('pageshow', event => { if (event.persisted) enter(); });
-setInterval(() => { checkWebUpdate(); if (!document.hidden) prepareAndroidDownload(); }, 60000);
+setInterval(() => { checkWebUpdate(); checkAndroidUpdate(); if (!document.hidden) prepareAndroidDownload(); }, 60000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 if (token) {
   showApp();

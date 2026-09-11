@@ -22,3 +22,5 @@ Optional environment variables:
 - `MAD_SCREENSHOTS`: directory for screenshots you want to keep.
 
 The individual `.cjs` scripts also accept `MAD_TEST_URL`, `MAD_TEST_PASSWORD` and `MAD_TEST_BOT_TOKEN` for a manually prepared test instance. Those scripts perform real mutations. Use the isolated runner unless you specifically need a separate test server.
+
+`android-update.cjs` checks authenticated update discovery, newer-version comparison, the signed download button and the one-time migration dialog for older APKs. The Android installer and unknown-source permission screen still need a physical-device check.

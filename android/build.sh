@@ -43,9 +43,10 @@ cp licenses/* build/license-assets/assets/licenses/
 "$FOODIE_BUILD_TOOLS/apksigner" sign --ks "$FOODIE_SIGN_DIR/release.jks" --ks-key-alias "$FOODIE_KEY_ALIAS" --ks-pass "file:$FOODIE_SIGN_DIR/password" --out build/foodie.apk build/aligned.apk
 "$FOODIE_BUILD_TOOLS/apksigner" verify --verbose build/foodie.apk
 "$FOODIE_BUILD_TOOLS/zipalign" -c 4 build/foodie.apk
-# Publishing is explicit. Go serves this compatibility path behind authentication.
+# Publish the complete signed APK atomically. Its embedded version is published with it.
 if [ "${FOODIE_PUBLISH_APK:-0}" = "1" ]; then
     mkdir -p ../downloads
     cp build/foodie.apk ../downloads/.foodie.apk.new
+    chmod 644 ../downloads/.foodie.apk.new
     mv ../downloads/.foodie.apk.new ../downloads/foodie.apk
 fi

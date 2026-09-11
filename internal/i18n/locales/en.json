@@ -217,7 +217,14 @@
     "\nTaletjeneste: ": "\nSpeech service: ",
     "\nFejl: ": "\nError: ",
     "\nKlar: ": "\nReady: ",
-    " · Tale registreret: ": " · Speech detected: "
+    " · Tale registreret: ": " · Speech detected: ",
+    "Opdater Foodie": "Update Foodie",
+    "Henter opdatering …": "Downloading update …",
+    "Kunne ikke hente opdateringen. Tryk Opdater for at prøve igen.": "Could not download the update. Tap Update to try again.",
+    "Kunne ikke åbne opdateringen. Tryk Opdater for at prøve igen.": "Could not open the update. Tap Update to try again.",
+    "Opdateringen passer ikke til denne app. Hent en APK med samme app-id og signeringsnøgle.": "This update does not match this app. Use an APK with the same application ID and signing key.",
+    "Tillad opdateringer fra Foodie på den næste skærm.": "Allow updates from Foodie on the next screen.",
+    "Åbn Foodie i tabletens browser og tryk Hent Android-app. Installer denne opdatering én gang. Fremover kan du opdatere direkte her i appen.": "Open Foodie in your tablet browser and tap Download Android app. Install this update once. Future updates can be started here in the app."
   },
   "units": {
     "stk.": [
