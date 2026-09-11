@@ -22,7 +22,7 @@ func TestAndroidBrowserDownload(t *testing.T) {
 		t.Fatal(err)
 	}
 	apk := []byte("PK\x03\x04browser-download-fixture")
-	if err := os.WriteFile(filepath.Join(root, "downloads", "til-bordet.apk"), apk, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "downloads", "foodie.apk"), apk, 0644); err != nil {
 		t.Fatal(err)
 	}
 	call := func(method, path, token string, cookie *http.Cookie, byteRange string) *httptest.ResponseRecorder {
@@ -88,12 +88,12 @@ func TestAndroidBrowserDownload(t *testing.T) {
 	if call("GET", link, f.Bot, nil, "").Code != 403 {
 		t.Fatal("direct link bypassed bot restrictions")
 	}
-	for _, path := range []string{"/api/state", "/api/v1/requirements", "/downloads/til-bordet.apk"} {
+	for _, path := range []string{"/api/state", "/api/v1/requirements", "/downloads/foodie.apk"} {
 		if call("GET", path+"?grant="+cookie.Value, "", nil, "").Code != 401 {
 			t.Fatal("APK link granted unrelated access")
 		}
 	}
-	for _, path := range []string{"/api/state", "/api/v1/requirements", "/downloads/til-bordet.apk", "/api/download/android/session"} {
+	for _, path := range []string{"/api/state", "/api/v1/requirements", "/downloads/foodie.apk", "/api/download/android/session"} {
 		if call("GET", path, "", cookie, "").Code != 401 {
 			t.Fatalf("APK cookie granted access to %s", path)
 		}

@@ -46,6 +46,6 @@ cp licenses/* build/license-assets/assets/licenses/
 # Publishing is explicit. Go serves this compatibility path behind authentication.
 if [ "${FOODIE_PUBLISH_APK:-0}" = "1" ]; then
     mkdir -p ../downloads
-    cp build/foodie.apk ../downloads/.til-bordet.apk.new
-    mv ../downloads/.til-bordet.apk.new ../downloads/til-bordet.apk
+    cp build/foodie.apk ../downloads/.foodie.apk.new
+    mv ../downloads/.foodie.apk.new ../downloads/foodie.apk
 fi

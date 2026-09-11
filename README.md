@@ -148,7 +148,7 @@ To also make the APK available through the authenticated web download link:
 FOODIE_PUBLISH_APK=1 ./android/build.sh
 ```
 
-The internal filename `downloads/til-bordet.apk` is retained for compatibility. Browsers download it as `foodie.apk` using a short-lived signed link. No household password or bot token is compiled into the APK. Your configured server URL is necessarily present in your own build; APK files are excluded from Git.
+The APK is stored at `downloads/foodie.apk`. Browsers download it using a short-lived signed link. No household password or bot token is compiled into the APK. Your configured server URL is necessarily present in your own build; APK files are excluded from Git.
 
 ### Voice and screen wake
 

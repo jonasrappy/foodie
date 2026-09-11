@@ -13,7 +13,7 @@ const androidCookie = "__Secure-mad_apk"
 const androidFilename = "foodie.apk"
 
 func isAndroidDownload(path string) bool {
-	return path == "/api/download/android" || path == "/downloads/til-bordet.apk"
+	return path == "/api/download/android" || path == "/downloads/foodie.apk"
 }
 
 // Prepare a normal browser download. Android's download manager can send this
@@ -33,7 +33,7 @@ func (s *Server) androidDownloadSession(w http.ResponseWriter, r *http.Request) 
 		s.problem(w, 405, "Brug POST til at forberede download.")
 		return
 	}
-	if _, err := os.Stat(filepath.Join(filepath.Dir(s.publicDir), "downloads", "til-bordet.apk")); err != nil {
+	if _, err := os.Stat(filepath.Join(filepath.Dir(s.publicDir), "downloads", "foodie.apk")); err != nil {
 		s.fail(w, r, err)
 		return
 	}
@@ -76,7 +76,7 @@ func (s *Server) androidDownload(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 405, "Brug GET til at hente appen.")
 		return
 	}
-	file, err := os.Open(filepath.Join(filepath.Dir(s.publicDir), "downloads", "til-bordet.apk"))
+	file, err := os.Open(filepath.Join(filepath.Dir(s.publicDir), "downloads", "foodie.apk"))
 	if err != nil {
 		s.fail(w, r, err)
 		return

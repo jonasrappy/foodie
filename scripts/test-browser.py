@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory(prefix='foodie-browser-') as temporary:
     home = Path(temporary)
     shutil.copytree(str(root / 'public'), str(home / 'public'))
     (home / 'downloads').mkdir()
-    apk = home / 'downloads/til-bordet.apk'
+    apk = home / 'downloads/foodie.apk'
     built = root / 'android/build/foodie.apk'
     if built.is_file():
         shutil.copyfile(str(built), str(apk))

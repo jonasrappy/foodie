@@ -336,10 +336,10 @@ func TestAPKDownloadRequiresDeviceLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	apk := []byte("PK\x03\x04test-apk")
-	if err := os.WriteFile(filepath.Join(root, "downloads", "til-bordet.apk"), apk, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "downloads", "foodie.apk"), apk, 0644); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/api/download/android", "/downloads/til-bordet.apk"} {
+	for _, path := range []string{"/api/download/android", "/downloads/foodie.apk"} {
 		if status, _ := request(t, server.URL+path, "GET", "", ""); status != 401 {
 			t.Fatalf("public APK download: %d", status)
 		}
