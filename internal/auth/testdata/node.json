@@ -1,0 +1,11 @@
+{
+  "password": "test-æble-🍎",
+  "bot": "fixture-bot-token",
+  "token": "device.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.-Vr1lEBSQbVC6zvwkxU9uwQ5pNRu2_wH1zYd2WfKzxQ",
+  "config": {
+    "passwordSalt": "node-compatible-salt",
+    "passwordHash": "c8bff902cef1e14af71730051b83e33ba3ef3821b902545ec04a298f2dc2d74ce2cd4d7b44ffae3006d7f7d6d0d0f34e1760ead61221cfeb52c27e48da0c8989",
+    "sessionSecret": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "botTokenHash": "bf5c56d6c06aad8b7e019b0a2d798b6e4e6a958d57ae9b91d72fec5674aa5f30"
+  }
+}

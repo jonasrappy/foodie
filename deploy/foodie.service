@@ -1,0 +1,22 @@
+[Unit]
+Description=Foodie - Go shopping and meal API
+After=network.target
+[Service]
+Type=simple
+User=foodie
+Group=foodie
+WorkingDirectory=/opt/foodie
+ExecStart=/opt/foodie/bin/foodie serve --config /etc/foodie/foodie.env
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+UMask=0027
+Environment=FOODIE_DATA_DIR=/var/lib/foodie
+Environment=FOODIE_PUBLIC_DIR=/opt/foodie/public
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/foodie
+[Install]
+WantedBy=multi-user.target

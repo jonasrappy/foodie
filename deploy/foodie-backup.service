@@ -1,0 +1,16 @@
+[Unit]
+Description=Back up Foodie SQLite database (Go)
+[Service]
+Type=oneshot
+User=foodie
+Group=foodie
+UMask=0027
+Environment=FOODIE_DATA_DIR=/var/lib/foodie
+Environment=FOODIE_PUBLIC_DIR=/opt/foodie/public
+ExecStart=/opt/foodie/bin/foodie backup --config /etc/foodie/foodie.env
+TimeoutStartSec=150
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/foodie

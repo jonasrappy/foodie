@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Foodie</title>
+  <rect width="512" height="512" fill="#244c3e"/>
+  <path d="M199 199c-20-21 15-28 0-50" fill="none" stroke="#f7f7ef" stroke-width="14" stroke-linecap="round"/>
+  <path d="M254 199c-3-44 23-74 62-69 2 37-21 67-62 69Z" fill="#e9b784"/>
+  <path d="m254 199 36-43" fill="none" stroke="#244c3e" stroke-width="9" stroke-linecap="round"/>
+  <path d="M139 234h234c9 0 16 8 13 17l-11 40c-14 52-60 82-119 82s-105-30-119-82l-11-40c-3-9 4-17 13-17Z" fill="#f7f7ef"/>
+  <g fill="#244c3e"><circle cx="216" cy="282" r="9"/><circle cx="296" cy="282" r="9"/></g>
+  <path d="M236 312q20 20 40 0" fill="none" stroke="#244c3e" stroke-width="11" stroke-linecap="round"/>
+</svg>

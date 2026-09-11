@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="da"><head>
+<meta charset="utf-8"><meta name="app-version" content="__APP_VERSION__">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#f3f5ef"><meta name="robots" content="noindex, nofollow, noarchive"><meta name="googlebot" content="noindex, nofollow, noarchive">
+<meta name="application-name" content="Foodie"><meta name="apple-mobile-web-app-title" content="Foodie">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Foodie</title><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon.svg?v=foodie-122"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=foodie-122"><link rel="stylesheet" href="/style.css"><script src="/language.js" defer></script><script src="/app.js" defer></script>
+</head><body><svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><symbol id="basket" viewBox="0 0 24 24"><path d="m5 9 4-6m10 6-4-6M3 9h18l-2 11H5L3 9Zm6 4v3m6-3v3"/></symbol><symbol id="plate" viewBox="0 0 24 24"><circle cx="13" cy="12" r="7"/><circle cx="13" cy="12" r="4"/><path d="M2 3v6m3-6v6M2 7h3M3.5 9v12m18-18v18"/></symbol><symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="close" viewBox="0 0 24 24"><path d="m7 7 10 10M7 17 17 7"/></symbol><symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol><symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol><symbol id="leaf" viewBox="0 0 24 24"><path d="M19 4C9 2 3 7 5 14s14 7 14-10ZM5 20 15 9"/></symbol><symbol id="settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="3" fill="currentColor" stroke="none"/></symbol><symbol id="microphone" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4m-4 0h8"/></symbol><symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="trash" viewBox="0 0 24 24"><path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></symbol><symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol></svg>
+<div class="shell">
+<header class="topbar"><div class="brand"><span class="brand-icon" aria-hidden="true"><img src="/icon.svg?v=foodie-122" alt="" width="35" height="35"></span><span>Foodie<span class="brand-dot">.</span></span></div>
+<div class="toolbar"><button id="sync-control" class="connection" type="button" aria-label="Synkroniser lister" hidden><span id="sync-dot" class="status-dot waiting"></span><span id="sync-label" role="status">Forbinder</span></button><a id="install" class="tool-button" href="#" download="foodie.apk" aria-label="Hent Android-appen" title="Hent Android-appen" hidden><svg><use href="#download"/></svg><span>Hent Android-app</span></a><button id="wake" class="tool-button" type="button" aria-label="Hold skærmen tændt" aria-pressed="false" hidden><svg><use href="#sun"/></svg></button><button id="voice" class="tool-button" type="button" aria-label="Hey Foodie – stemmestyring" aria-pressed="false" hidden><svg><use href="#microphone"/></svg></button><button id="native-settings" class="tool-button" type="button" aria-label="Indstillinger" hidden><svg><use href="#settings"/></svg></button></div></header>
+<main>
+<section id="login-view" class="login-view"><div class="login-art"><span class="art-symbol" aria-hidden="true"><img src="/icon.svg?v=foodie-122" alt="" width="82" height="82"></span><h1>Hvad skal vi<br>have til middag?</h1><p>Det, vi mangler. Det, vi har lyst til.</p></div><form id="login-form" class="login-card"><span class="eyebrow">HUSETS LISTER</span><h2>Velkommen hjem.</h2><p>Indtast koden én gang. Vi husker dig.</p><label for="password">Husets kode</label><input id="password" type="password" autocomplete="current-password" required maxlength="200" placeholder="Indtast koden"><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">Åbn vores lister <svg><use href="#arrow"/></svg></button></form></section>
+<section id="app-view" hidden><div class="boards">
+<section class="board shopping" aria-labelledby="shopping-heading"><header class="board-head"><span class="board-icon"><svg><use href="#basket"/></svg></span><h2 id="shopping-heading">Indkøbsliste</h2><span class="count" id="shopping-count">0 varer</span></header>
+<div class="list-area" id="shopping-scroll"><ul id="shopping-list" class="items"></ul><div class="empty" id="shopping-empty"><span class="empty-icon"><svg><use href="#basket"/></svg></span><h3>Alt på plads.</h3><p>Skriv det på, når noget mangler.</p></div></div>
+<form class="composer" data-kind="shopping" autocomplete="off"><div class="entry-line"><label class="sr-only" for="shopping-input">Tilføj til indkøbslisten</label><textarea id="shopping-input" rows="1" enterkeyhint="send" placeholder="Hvad mangler vi?" maxlength="15000"></textarea></div><div class="composer-controls"><div class="quantity-stepper"><button type="button" data-step="-1" aria-label="Færre"><svg><use href="#minus"/></svg></button><label class="sr-only" for="shopping-quantity">Antal</label><input id="shopping-quantity" type="number" inputmode="decimal" min="0.01" max="9999" step="0.01" value="1" required><button type="button" data-step="1" aria-label="Flere"><svg><use href="#plus"/></svg></button></div><label class="sr-only" for="shopping-unit">Enhed</label><select id="shopping-unit"><option value="stk.">stk.</option><option value="liter">liter</option><option value="milliliter">milliliter</option><option value="kilo">kilo</option><option value="gram">gram</option><option value="pakker">pakker</option><option value="poser">poser</option><option value="dåser">dåser</option><option value="flasker">flasker</option><option value="bundter">bundter</option><option value="bakker">bakker</option><option value="kasser">kasser</option></select><button class="add-button" type="submit" aria-label="Tilføj vare"><svg><use href="#plus"/></svg><span>Tilføj</span></button></div></form>
+</section>
+<section class="board meals" aria-labelledby="meals-heading"><header class="board-head"><span class="board-icon"><svg><use href="#plate"/></svg></span><h2 id="meals-heading">Næste uges mad</h2><span class="count" id="meals-count">0 ønsker</span></header>
+<div class="list-area" id="meals-scroll"><ul id="meals-list" class="items"></ul><div class="empty" id="meals-empty"><span class="empty-icon"><svg><use href="#plate"/></svg></span><h3>Hvad har du lyst til?</h3><p>Plads til alle vores favoritter.</p></div></div>
+<form class="composer meal-composer" data-kind="meals" autocomplete="off"><label class="sr-only" for="meals-input">Tilføj madønsker</label><textarea id="meals-input" rows="1" enterkeyhint="send" placeholder="En ret, du har lyst til …" maxlength="15000"></textarea><button class="add-button" type="submit" aria-label="Tilføj madret"><svg><use href="#plus"/></svg></button></form>
+</section></div></section>
+</main></div>
+<div id="toast" class="toast" role="status" hidden></div>
+<dialog id="amount-dialog" class="sheet"><form id="amount-form"><header class="sheet-head"><h2 id="amount-title">Ret vare</h2><button id="cancel-amount" class="tool-button" type="button" aria-label="Luk redigering"><svg><use href="#close"/></svg></button></header><label for="edit-name">Navn</label><input id="edit-name" type="text" maxlength="300" required autocomplete="off"><div id="edit-amount-fields" class="amount-fields"><label>Antal<input id="edit-quantity" type="number" inputmode="decimal" min="0.01" max="9999" step="0.01" value="1" required></label><label>Enhed<select id="edit-unit"><option value="stk.">stk.</option><option value="liter">liter</option><option value="milliliter">milliliter</option><option value="kilo">kilo</option><option value="gram">gram</option><option value="pakker">pakker</option><option value="poser">poser</option><option value="dåser">dåser</option><option value="flasker">flasker</option><option value="bundter">bundter</option><option value="bakker">bakker</option><option value="kasser">kasser</option></select></label></div><p id="amount-error" class="error" role="alert"></p><button class="primary" type="submit">Gem ændringer <svg><use href="#arrow"/></svg></button></form></dialog>
+<dialog id="delete-dialog" class="sheet confirm-sheet" role="alertdialog" aria-labelledby="delete-title" aria-describedby="delete-description"><span class="delete-emblem"><svg><use href="#trash"/></svg></span><h2 id="delete-title">Slet varen?</h2><p id="delete-description">Er du sikker på, at du vil slette <strong id="delete-name"></strong>?</p><div class="confirm-actions"><button id="cancel-delete" class="secondary" type="button" autofocus>Behold</button><button id="confirm-delete" class="danger" type="button">Ja, slet</button></div></dialog>
+<dialog id="foodie-dialog" class="foodie-dialog" aria-labelledby="foodie-title" aria-describedby="foodie-caption" data-phase="waking">
+  <div class="foodie-scene">
+    <div class="foodie-wordmark" aria-hidden="true">Foodie<span>.</span></div>
+    <button id="foodie-close" class="foodie-close" type="button" aria-label="Luk samtale" autofocus><svg><use href="#close"/></svg></button>
+    <div class="foodie-stage" aria-hidden="true">
+      <div class="foodie-halo halo-outer"></div><div class="foodie-halo halo-inner"></div>
+      <div class="foodie-orb">
+        <span class="foodie-spark spark-one">✦</span><span class="foodie-spark spark-two">✧</span><span class="foodie-spark spark-three">✦</span>
+        <svg class="foodie-character" viewBox="80 90 352 320" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="foodie-porcelain" cx=".34" cy=".14" r=".92"><stop offset="0" stop-color="#fffef6"/><stop offset=".48" stop-color="#faf4df"/><stop offset=".82" stop-color="#dbd6bc"/><stop offset="1" stop-color="#b7bca3"/></radialGradient>
+            <linearGradient id="foodie-rim" x2="0" y2="1"><stop stop-color="#b9c1a4"/><stop offset=".45" stop-color="#e5e7d1"/><stop offset="1" stop-color="#fffff5"/></linearGradient>
+            <radialGradient id="foodie-eye-gloss" cx=".33" cy=".2" r=".85"><stop stop-color="#52745b"/><stop offset=".5" stop-color="#233e31"/><stop offset="1" stop-color="#10291f"/></radialGradient>
+            <radialGradient id="foodie-blush"><stop stop-color="#efaa99" stop-opacity=".95"/><stop offset=".65" stop-color="#efb4a4" stop-opacity=".7"/><stop offset="1" stop-color="#efb4a4" stop-opacity="0"/></radialGradient>
+            <linearGradient id="foodie-leaf-light" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe3ad"/><stop offset=".5" stop-color="#edbb7f"/><stop offset="1" stop-color="#b98554"/></linearGradient>
+            <linearGradient id="foodie-limb" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffbed"/><stop offset=".6" stop-color="#eee9d2"/><stop offset="1" stop-color="#c7cbb3"/></linearGradient>
+            <radialGradient id="foodie-floor"><stop stop-color="#102b20" stop-opacity=".42"/><stop offset="1" stop-color="#102b20" stop-opacity="0"/></radialGradient>
+          </defs>
+          <ellipse class="foodie-shadow" cx="256" cy="383" rx="105" ry="16" fill="url(#foodie-floor)"/>
+          <g class="foodie-body">
+            <g class="foodie-leaf"><path d="M254 204c-5-44 20-77 64-72 3 41-23 72-64 72Z" fill="url(#foodie-leaf-light)"/><path d="m255 203 36-43" stroke="#ad7c50" stroke-width="5"/><path d="M272 162q10-15 24-15" stroke="#f8dbad" stroke-width="5"/></g>
+            <path class="foodie-steam" d="M204 194c-21-19 11-26 1-44" stroke="#e7eee1" stroke-width="10" opacity=".65"/>
+            <path class="foodie-arm arm-left" d="M137 279q-27-13-29 9q-1 14 22 18" stroke="url(#foodie-limb)" stroke-width="15"/>
+            <path class="foodie-arm arm-right" d="M375 279q27-13 29 9q1 14-22 18" stroke="url(#foodie-limb)" stroke-width="15"/>
+            <ellipse cx="215" cy="368" rx="19" ry="10" fill="url(#foodie-limb)"/><ellipse cx="297" cy="368" rx="19" ry="10" fill="url(#foodie-limb)"/>
+            <path d="M139 225q117-20 234 0c9 0 16 8 13 17l-11 48c-14 54-60 85-119 85s-105-31-119-85l-11-48c-3-9 4-17 13-17Z" fill="url(#foodie-porcelain)"/>
+            <ellipse cx="256" cy="228" rx="119" ry="10" fill="url(#foodie-rim)"/><path d="M140 238q116 19 232 0" stroke="#fffef7" stroke-width="5" opacity=".9"/><path d="M144 250q1 18 10 33" stroke="#fffefa" stroke-width="9" opacity=".5"/>
+            <path d="M156 316q32 49 100 49t100-49q-35 38-100 38t-100-38Z" fill="#aab39a" opacity=".2"/>
+            <g class="foodie-face">
+              <ellipse cx="181" cy="304" rx="24" ry="16" fill="url(#foodie-blush)"/><ellipse cx="331" cy="304" rx="24" ry="16" fill="url(#foodie-blush)"/>
+              <g class="foodie-eyes">
+                <g class="foodie-eye eye-left"><ellipse cx="211" cy="281" rx="17" ry="23" fill="url(#foodie-eye-gloss)"/><ellipse cx="206" cy="273" rx="6" ry="8" fill="#fffefa"/><circle cx="217" cy="290" r="3.5" fill="#b2c7b1"/></g>
+                <g class="foodie-eye eye-right"><ellipse cx="301" cy="281" rx="17" ry="23" fill="url(#foodie-eye-gloss)"/><ellipse cx="296" cy="273" rx="6" ry="8" fill="#fffefa"/><circle cx="307" cy="290" r="3.5" fill="#b2c7b1"/></g>
+              </g>
+              <path class="foodie-smile" d="M237 314q19 23 38 0" stroke="#2c4231" stroke-width="7"/>
+              <g class="foodie-mouth"><path d="M235 310q21 5 42 0q1 30-21 30t-21-30Z" fill="#243d31"/><path d="M242 330q14-14 28 0q-5 10-14 10t-14-10Z" fill="#efb4a4"/></g>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </div>
+    <div class="foodie-copy">
+      <div class="foodie-state"><span class="foodie-meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><h2 id="foodie-title">Hej med dig</h2></div>
+      <p id="foodie-caption">Hey Foodie</p>
+    </div>
+  </div>
+</dialog>
+
+</body></html>

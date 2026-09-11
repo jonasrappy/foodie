@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS items (
+ id TEXT PRIMARY KEY,
+ kind TEXT NOT NULL CHECK(kind IN ('shopping','meals')),
+ text TEXT NOT NULL,
+ checked INTEGER NOT NULL DEFAULT 0,
+ version INTEGER NOT NULL DEFAULT 1,
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS meta (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL, updated_at TEXT NOT NULL);
+INSERT OR IGNORE INTO meta VALUES(1,0,strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+CREATE TABLE IF NOT EXISTS resets (id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, previous_revision INTEGER NOT NULL, snapshot TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS requests (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+PRAGMA user_version=1;

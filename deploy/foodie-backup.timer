@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily Foodie backup
+[Timer]
+OnCalendar=*-*-* 03:20:00
+RandomizedDelaySec=300
+Persistent=true
+[Install]
+WantedBy=timers.target
