@@ -72,7 +72,11 @@ FOODIE_LANGUAGE=da
 FOODIE_TIMEZONE=Europe/Copenhagen
 ```
 
-Language packs live in `internal/i18n/locales/en.json` and `da.json`. They contain interface text, errors, voice replies and singular/plural unit labels. For example, `1 pack` and `2 packs` become `1 pakke` and `2 pakker` in Danish.
+Language packs live in `internal/i18n/locales/en.json` and `da.json`. English text is the source key in both files. All application code and comments are written in English. Each pack contains interface text, errors, voice replies, singular/plural unit labels and its own voice grammar.
+
+The parser loads one grammar at a time. Number words, unit aliases, command phrases, confirmations and conversation endings come only from `FOODIE_LANGUAGE`. For example, `yes please` confirms a duplicate in English and `ja tak` confirms it in Danish. Neither acts as a confirmation in the other language. Product names remain free text, including foreign brands. The shared wake phrase is `Hey Foodie`.
+
+The server validates language packs on startup. Tests check that source messages exist in the English catalog, translations preserve format placeholders, and spoken unit aliases match the units offered in the interface. For example, `1 pack` and `2 packs` become `1 pakke` and `2 pakker` in Danish.
 
 Restart the server after changing its settings. The web interface picks up the new language. Android's native text, speech-recognition locale and TTS voice are selected from the same setting when the APK is built, so rebuild the APK when changing its voice language.
 
@@ -128,8 +132,8 @@ ANDROID_SDK_ROOT=/path/to/android-sdk
 ANDROID_APPLICATION_ID=app.foodie.mobile
 ANDROID_SIGN_DIR=./.private/android-signing
 ANDROID_KEY_ALIAS=foodie
-ANDROID_VERSION_NAME=1.3.2
-ANDROID_VERSION_CODE=8
+ANDROID_VERSION_NAME=1.4.0
+ANDROID_VERSION_CODE=9
 ```
 
 Use your real HTTPS hostname. Foodie currently expects to be hosted at the origin root, not a subdirectory.
@@ -208,22 +212,28 @@ Use the actual revision, not the example number. A `409` response means someone 
 
 Bot credentials can read requirements and reset lists. They cannot log in as a household device or download the APK.
 
-Units retain stable storage/API identifiers so changing the display language does not change existing data. Readable requirement strings and displayed quantities use the selected language.
+Units use English storage/API identifiers in every language. Changing the display language never changes item names or unit IDs. Readable requirement strings and displayed quantities use the selected language.
 
 | Identifier | English | Danish |
 | --- | --- | --- |
-| `stk.` | piece / pieces | stk. |
+| `piece` | piece / pieces | stk. |
 | `liter` | liter / liters | liter |
 | `milliliter` | milliliter / milliliters | milliliter |
-| `kilo` | kilo / kilos | kilo |
+| `kilogram` | kilo / kilos | kilo |
 | `gram` | gram / grams | gram |
-| `pakker` | pack / packs | pakke / pakker |
-| `poser` | bag / bags | pose / poser |
-| `dåser` | can / cans | dåse / dåser |
-| `flasker` | bottle / bottles | flaske / flasker |
-| `bundter` | bunch / bunches | bundt / bundter |
-| `bakker` | tray / trays | bakke / bakker |
-| `kasser` | crate / crates | kasse / kasser |
+| `pack` | pack / packs | pakke / pakker |
+| `bag` | bag / bags | pose / poser |
+| `can` | can / cans | dåse / dåser |
+| `bottle` | bottle / bottles | flaske / flasker |
+| `bunch` | bunch / bunches | bundt / bundter |
+| `tray` | tray / trays | bakke / bakker |
+| `crate` | crate / crates | kasse / kasser |
+
+### Upgrading from versions before 1.4
+
+On the first start, a transaction migrates old unit IDs in SQLite to the English identifiers above. It preserves item text, quantities, checked state, ordering, revisions, archived lists and request IDs. Valid pending voice confirmations survive the migration; stale ones still require a new answer. Keep a database backup before upgrading. An older server binary cannot open the upgraded schema.
+
+The web app also converts saved drafts and offline additions. A small compatibility adapter accepts old unit IDs from clients that have not reloaded yet. This adapter is separate from speech parsing and does not add words to either language's grammar. Historical SQL migrations retain the original IDs so existing installations can upgrade.
 
 ## Passwords, backups and updates
 

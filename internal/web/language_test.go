@@ -55,3 +55,33 @@ func TestEnglishUIBotExportAndVoiceConversation(t *testing.T) {
 		t.Fatal(reply)
 	}
 }
+
+func TestVoiceConfirmationUsesServerLanguage(t *testing.T) {
+	for _, tc := range []struct{ language, item, foreignYes, ownYes string }{
+		{"en", "two packs of grapes", "ja tak", "yes please"},
+		{"da", "to pakker vindruer", "yes please", "ja tak"},
+	} {
+		t.Run(tc.language, func(t *testing.T) {
+			s, server, f := testServer(t)
+			s.language = tc.language
+			if code, reply := sendVoiceText(t, server.URL, f.Token, tc.item, "language-seed-00001", ""); code != 200 || reply.Kind != "added" {
+				t.Fatal(code, reply)
+			}
+			code, question := sendVoiceText(t, server.URL, f.Token, tc.item, "language-repeat-0001", "")
+			if code != 200 || question.Kind != "confirm" {
+				t.Fatal(code, question)
+			}
+			before, _ := s.store.Snapshot(t.Context())
+			code, reply := sendVoiceText(t, server.URL, f.Token, tc.foreignYes, "language-foreign-001", question.ConfirmationID)
+			after, _ := s.store.Snapshot(t.Context())
+			if code != 200 || reply.Kind != "confirm" || after.Revision != before.Revision {
+				t.Fatal("foreign-language confirmation changed the list", code, reply)
+			}
+			code, reply = sendVoiceText(t, server.URL, f.Token, tc.ownYes, "language-confirm-001", question.ConfirmationID)
+			after, _ = s.store.Snapshot(t.Context())
+			if code != 200 || reply.Kind != "added" || after.Shopping[0].Quantity != 4 || after.Shopping[0].Unit != "pack" {
+				t.Fatal("selected-language confirmation failed", code, reply)
+			}
+		})
+	}
+}

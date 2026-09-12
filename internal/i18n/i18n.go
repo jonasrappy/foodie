@@ -15,10 +15,12 @@ import (
 var files embed.FS
 
 type Pack struct {
-	Language string               `json:"language"`
-	Locale   string               `json:"locale"`
-	Messages map[string]string    `json:"messages"`
-	Units    map[string][2]string `json:"units"`
+	DecimalSeparator string               `json:"decimal_separator"`
+	Language         string               `json:"language"`
+	Locale           string               `json:"locale"`
+	Messages         map[string]string    `json:"messages"`
+	Units            map[string][2]string `json:"units"`
+	Voice            VoiceGrammar         `json:"voice"`
 }
 
 var packs = func() map[string]Pack {
@@ -29,10 +31,15 @@ var packs = func() map[string]Pack {
 			panic(err)
 		}
 		var pack Pack
-		if err = json.Unmarshal(data, &pack); err != nil {
+		decoder := json.NewDecoder(strings.NewReader(string(data)))
+		decoder.DisallowUnknownFields()
+		if err = decoder.Decode(&pack); err != nil {
 			panic(err)
 		}
 		result[lang] = pack
+	}
+	if err := validatePacks(result); err != nil {
+		panic(err)
 	}
 	return result
 }()
@@ -51,9 +58,7 @@ func Text(language, source string) string {
 }
 func Number(language string, n float64) string {
 	text := strconv.FormatFloat(math.Round(n*100)/100, 'f', -1, 64)
-	if language == "da" {
-		text = strings.ReplaceAll(text, ".", ",")
-	}
+	text = strings.ReplaceAll(text, ".", Get(language).DecimalSeparator)
 	return text
 }
 func Unit(language, unit string, n float64) string {
@@ -65,14 +70,25 @@ func Unit(language, unit string, n float64) string {
 	}
 	return unit
 }
-func JSON(language string) []byte { data, _ := json.Marshal(Get(language)); return data }
+
+// JSON exposes presentation data only; voice parsing stays on the server.
+func JSON(language string) []byte {
+	pack := Get(language)
+	data, _ := json.Marshal(struct {
+		Language string               `json:"language"`
+		Locale   string               `json:"locale"`
+		Messages map[string]string    `json:"messages"`
+		Units    map[string][2]string `json:"units"`
+	}{pack.Language, pack.Locale, pack.Messages, pack.Units})
+	return data
+}
 
 var textNode = regexp.MustCompile(`>[^<>]+<`)
 var attribute = regexp.MustCompile(`(aria-label|title|placeholder)="([^"]*)"`)
 
 // Translate trusted template text and labels, never identifiers or user content.
 func HTML(language, source string) string {
-	source = strings.Replace(source, `lang="da"`, `lang="`+Get(language).Language+`"`, 1)
+	source = strings.Replace(source, `lang="en"`, `lang="`+Get(language).Language+`"`, 1)
 	source = textNode.ReplaceAllStringFunc(source, func(node string) string {
 		raw := node[1 : len(node)-1]
 		trimmed := strings.TrimSpace(raw)

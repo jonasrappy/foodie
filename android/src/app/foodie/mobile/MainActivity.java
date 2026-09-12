@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
         layout.setBackgroundColor(Color.rgb(243,245,239));
         layout.setFitsSystemWindows(true);
         connectionError = new TextView(this);
-        connectionError.setText(I18n.text("Ingen forbindelse. Tryk her for at prøve igen."));
+        connectionError.setText(I18n.text("No connection. Tap here to try again."));
         connectionError.setTextColor(Color.rgb(120,60,30));
         connectionError.setPadding(dp(16),dp(12),dp(16),dp(12));
         connectionError.setVisibility(View.GONE);
@@ -185,43 +185,43 @@ public class MainActivity extends Activity {
     }
     private void showVoiceSettings() {
         String error = prefs.getString("voiceError", "");
-        String message = FoodieService.running ? FoodieService.status : error.isEmpty() ? I18n.text("Sig Hey Foodie, også med slukket skærm. Jeg spørger, hvad du vil tilføje, og svarer på dansk.\n\nAktiveringsordet genkendes lokalt på tabletten. Dit efterfølgende svar genkendes af Androids danske taletjeneste, som kan sende den korte kommando til Google eller Samsung. Jeres server modtager kun teksten.\n\nBruger medielyd og ekstra batteri.") : error;
+        String message = FoodieService.running ? FoodieService.status : error.isEmpty() ? I18n.text("Say Hey Foodie, even when the screen is off. Foodie will ask what to add and reply in English.\n\nThe wake word is detected locally on this device. Android's speech service recognizes your reply and may send the short command to Google or Samsung. Your Foodie server receives only text.\n\nUses media volume and additional battery power.") : error;
         new AlertDialog.Builder(this).setTitle("Hey Foodie").setMessage(message)
-            .setPositiveButton(FoodieService.running ? I18n.text("Slå fra") : I18n.text("Slå til"), (dialog, which) -> {
+            .setPositiveButton(FoodieService.running ? I18n.text("Turn off") : I18n.text("Turn on"), (dialog, which) -> {
                 if (FoodieService.running) { startService(new Intent(this, FoodieService.class).setAction(FoodieService.STOP)); }
                 else enableVoice();
             })
-            .setNeutralButton(I18n.text("Indstillinger"), (dialog, which) -> new AlertDialog.Builder(this).setTitle("Foodie-indstillinger").setItems(new String[]{I18n.text("Dansk stemme og oplæsning"), I18n.text("Talegenkendelse"), I18n.text("Appens batteri og tilladelser"), I18n.text("Seneste stemmefejl"), I18n.text("Skærmvækning · Vis oven på andre apps")}, (d, index) -> {
-                if (index == 3) { new AlertDialog.Builder(this).setTitle(I18n.text("Seneste stemmefejl")).setMessage(prefs.getString("voiceDiagnostic", I18n.text("Ingen fejl registreret i denne version."))).setPositiveButton(I18n.text("Luk"), null).show(); return; }
+            .setNeutralButton(I18n.text("Settings"), (dialog, which) -> new AlertDialog.Builder(this).setTitle("Foodie-indstillinger").setItems(new String[]{I18n.text("Voice and text-to-speech"), I18n.text("Speech recognition"), I18n.text("Battery and permissions"), I18n.text("Latest voice error"), I18n.text("Screen wake · Display over other apps")}, (d, index) -> {
+                if (index == 3) { new AlertDialog.Builder(this).setTitle(I18n.text("Latest voice error")).setMessage(prefs.getString("voiceDiagnostic", I18n.text("No errors recorded in this version."))).setPositiveButton(I18n.text("Close"), null).show(); return; }
                 if(index==4){openVoiceScreenSettings(false);return;}
                 try { startActivity(index == 0 ? new Intent("com.android.settings.TTS_SETTINGS") : index == 1 ? new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS) : new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()))); }
                 catch (Exception ignored) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
-            }).setNegativeButton(I18n.text("Luk"), null).show())
-            .setNegativeButton(I18n.text("Luk"), null).show();
+            }).setNegativeButton(I18n.text("Close"), null).show())
+            .setNegativeButton(I18n.text("Close"), null).show();
     }
     private void enableVoice() {
         if (!trustedPage()) return;
         web.evaluateJavascript("localStorage.getItem('mad.token')", value -> {
             try {
                 String deviceToken = new JSONArray("[" + value + "]").optString(0, "");
-                if (!deviceToken.startsWith("device.")) { Toast.makeText(this, I18n.text("Log ind med husets kode først."), Toast.LENGTH_LONG).show(); return; }
+                if (!deviceToken.startsWith("device.")) { Toast.makeText(this, I18n.text("Log in with the household password first."), Toast.LENGTH_LONG).show(); return; }
                 prefs.edit().putBoolean("voiceUseAndroid", true).putString("voiceToken", deviceToken).remove("voiceError").apply();
                 java.util.ArrayList<String> permissions = new java.util.ArrayList<>();
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.RECORD_AUDIO);
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.POST_NOTIFICATIONS);
                 if (!permissions.isEmpty()) requestPermissions(permissions.toArray(new String[0]), 42);
                 else startVoice();
-            } catch (Exception ignored) { Toast.makeText(this, I18n.text("Åbn listerne og prøv igen."), Toast.LENGTH_LONG).show(); }
+            } catch (Exception ignored) { Toast.makeText(this, I18n.text("Open the lists and try again."), Toast.LENGTH_LONG).show(); }
         });
     }
     private void startVoice() {
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, I18n.text("Foodie skal have adgang til mikrofonen for at lytte."), Toast.LENGTH_LONG).show(); return; }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { Toast.makeText(this, I18n.text("Foodie needs microphone access to listen."), Toast.LENGTH_LONG).show(); return; }
         if(Build.VERSION.SDK_INT>=29&&!Settings.canDrawOverlays(this)&&!prefs.getBoolean("voiceScreenAsked",false)){
             prefs.edit().putBoolean("voiceScreenAsked",true).apply();
-            new AlertDialog.Builder(this).setTitle(I18n.text("Væk Foodie med stemmen"))
-                .setMessage(I18n.text("Tillad Foodie at vise oven på andre apps, så figuren kan komme frem og vække skærmen, når du siger Hey Foodie."))
-                .setPositiveButton(I18n.text("Åbn indstillinger"),(dialog,which)->openVoiceScreenSettings(true))
-                .setNegativeButton(I18n.text("Ikke nu"),(dialog,which)->startVoice()).show();return;
+            new AlertDialog.Builder(this).setTitle(I18n.text("Wake Foodie by voice"))
+                .setMessage(I18n.text("Allow Foodie to display over other apps so it can open and wake the screen when you say Hey Foodie."))
+                .setPositiveButton(I18n.text("Open settings"),(dialog,which)->openVoiceScreenSettings(true))
+                .setNegativeButton(I18n.text("Not now"),(dialog,which)->startVoice()).show();return;
         }
         PowerManager power = (PowerManager) getSystemService(POWER_SERVICE);
         if (!power.isIgnoringBatteryOptimizations(getPackageName()) && !prefs.getBoolean("voiceBatteryAsked", false)) {
@@ -231,12 +231,12 @@ public class MainActivity extends Activity {
         }
         Intent intent = new Intent(this, FoodieService.class).setAction(FoodieService.START);
         try { if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent); else startService(intent); }
-        catch (Exception ignored) { Toast.makeText(this, I18n.text("Åbn appen og slå Foodie til igen."), Toast.LENGTH_LONG).show(); }
+        catch (Exception ignored) { Toast.makeText(this, I18n.text("Open the app and turn Foodie on again."), Toast.LENGTH_LONG).show(); }
     }
     private void openVoiceScreenSettings(boolean continueStart) {
         Intent intent=new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+getPackageName()));
         try {if(continueStart)startActivityForResult(intent,44);else startActivity(intent);}
-        catch(RuntimeException error){Toast.makeText(this,I18n.text("Find Foodie under Androids Vis oven på andre apps."),Toast.LENGTH_LONG).show();if(continueStart)startVoice();}
+        catch(RuntimeException error){Toast.makeText(this,I18n.text("Find Foodie under Android's Display over other apps settings."),Toast.LENGTH_LONG).show();if(continueStart)startVoice();}
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
@@ -261,18 +261,18 @@ public class MainActivity extends Activity {
 
     }
     private void showSettings() {
-        String lock = prefs.getBoolean("showLocked",true) ? I18n.text("Vis over låseskærm: til") : I18n.text("Vis over låseskærm: fra");
-        String[] items = {prefs.getBoolean("keepAwake",false) ? I18n.text("Hold skærmen tændt: til") : I18n.text("Hold skærmen tændt: fra"),lock,I18n.text("Vælg fast startapp / hjemmeskærm"),I18n.text("Fastgør appen på skærmen"),I18n.text("Genindlæs lister"),I18n.text("Åbn Android-indstillinger"),I18n.text("Om Foodie"),I18n.text("Hey Foodie – stemmestyring")};
-        new AlertDialog.Builder(this).setTitle(I18n.text("Køkkentablet")).setItems(items,(dialog,which) -> {
+        String lock = prefs.getBoolean("showLocked",true) ? I18n.text("Show over lock screen: on") : I18n.text("Show over lock screen: off");
+        String[] items = {prefs.getBoolean("keepAwake",false) ? I18n.text("Keep screen on: on") : I18n.text("Keep screen on: off"),lock,I18n.text("Choose default home app"),I18n.text("Pin this app"),I18n.text("Reload lists"),I18n.text("Open Android settings"),I18n.text("About Foodie"),I18n.text("Hey Foodie voice control")};
+        new AlertDialog.Builder(this).setTitle(I18n.text("Kitchen tablet")).setItems(items,(dialog,which) -> {
             if(which==0) { prefs.edit().putBoolean("keepAwake",!prefs.getBoolean("keepAwake",false)).apply(); applyWake(); }
             if(which==1) { prefs.edit().putBoolean("showLocked",!prefs.getBoolean("showLocked",true)).apply(); applyLockScreen(); }
             if(which==2) { try { startActivity(new Intent(Settings.ACTION_HOME_SETTINGS)); } catch(Exception ignored) { startActivity(new Intent(Settings.ACTION_SETTINGS)); } }
-            if(which==3) { try { startLockTask(); } catch(Exception ignored) { Toast.makeText(this,I18n.text("Aktivér appfastgørelse i Android-indstillinger."),Toast.LENGTH_LONG).show(); } }
+            if(which==3) { try { startLockTask(); } catch(Exception ignored) { Toast.makeText(this,I18n.text("Enable app pinning in Android settings."),Toast.LENGTH_LONG).show(); } }
             if(which==4) web.loadUrl(SITE);
             if(which==5) startActivity(new Intent(Settings.ACTION_SETTINGS));
             if(which==7) showVoiceSettings();
-            if(which==6) new AlertDialog.Builder(this).setTitle("Foodie " + BuildConfig.VERSION_NAME).setMessage(I18n.text("Vores indkøbsliste og madønsker.\n\nVælg Foodie som startapp, hvis tabletten skal være en fast køkkenskærm. Du kan altid skifte tilbage via Indstillinger → Vælg fast startapp.\n\nNår låseskærmsvisning er slået til, kan alle med tabletten se og redigere listerne, mens appen er fremme. Andre apps kræver stadig normal oplåsning.\n\nInternet kræves for at hente og gemme lister. Login huskes, indtil husets kode ændres eller appens data slettes.")).setPositiveButton("OK",null).show();
-        }).setNegativeButton(I18n.text("Luk"),null).show();
+            if(which==6) new AlertDialog.Builder(this).setTitle("Foodie " + BuildConfig.VERSION_NAME).setMessage(I18n.text("Shared shopping lists and meal requests.\n\nChoose Foodie as your home app for a dedicated kitchen tablet. You can change this in Settings > Choose default home app.\n\nWhen lock screen display is enabled, anyone holding the tablet can view and edit the lists while Foodie is visible. Other apps still require normal unlocking.\n\nAn internet connection is needed to sync lists. Login is remembered until the household password changes or app data is cleared.")).setPositiveButton("OK",null).show();
+        }).setNegativeButton(I18n.text("Close"),null).show();
     }
     @Override protected void onResume() { super.onResume();resumed=true; if(updater!=null)updater.resume(); voiceHandler.removeCallbacks(voiceStatus); voiceHandler.post(voiceStatus); immersive(); if(web!=null) { web.onResume(); web.evaluateJavascript("window.dispatchEvent(new Event('online'))",null); } }
     @Override protected void onPause() {resumed=false; if(updater!=null)updater.pause(); voiceHandler.removeCallbacks(voiceStatus);voiceHandler.removeCallbacks(pushVoice); if(web!=null) { CookieManager.getInstance().flush(); web.onPause(); } super.onPause(); }

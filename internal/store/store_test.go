@@ -58,7 +58,7 @@ func TestLegacyMigrationAndIdempotency(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(state.Shopping) != 1 || state.Shopping[0].Quantity != 1 || state.Shopping[0].Unit != "stk." || state.Shopping[0].CreatedAt != stamp {
+	if len(state.Shopping) != 1 || state.Shopping[0].Quantity != 1 || state.Shopping[0].Unit != "piece" || state.Shopping[0].CreatedAt != stamp {
 		t.Fatalf("legacy migration lost data: %+v", state)
 	}
 	state, err = s.Add(t.Context(), Add{Kind: "shopping", Texts: []string{"<æble> & pære"}, RequestID: "node-request-0000001"})
@@ -74,7 +74,7 @@ func TestLegacyMigrationAndIdempotency(t *testing.T) {
 		t.Fatalf("changed retry was accepted: %v", err)
 	}
 	var version int
-	if err = s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 4 {
+	if err = s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 5 {
 		t.Fatalf("schema version=%d, error=%v", version, err)
 	}
 }

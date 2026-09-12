@@ -5,7 +5,16 @@ import (
 	"unicode"
 )
 
-func dialogueText(text string) string {
+func contains(choices []string, text string) bool {
+	for _, choice := range choices {
+		if choice == text {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Parser) dialogueText(text string) string {
 	text = strings.ToLower(text)
 	text = strings.Map(func(r rune) rune {
 		if unicode.IsPunct(r) {
@@ -14,51 +23,45 @@ func dialogueText(text string) string {
 		return r
 	}, text)
 	text = strings.Join(strings.Fields(text), " ")
-	for _, name := range []string{" foodie", " foody"} {
-		text = strings.TrimSuffix(text, name)
+	for _, name := range p.grammar.Names {
+		text = strings.TrimSuffix(text, " "+name)
 	}
 	return text
 }
 
-// Match complete replies, never substrings: "nejliker" remains a grocery.
-func Ending(text string) bool {
-	switch dialogueText(text) {
-	case "no thanks", "no thank you", "nothing else", "that s all", "thats all", "that is all", "all done", "i m done", "goodbye", "cancel", "thank you", "thanks", "not now", "nej", "nej tak", "nejtak", "nej nej", "nej ellers tak", "nej ikke mere", "nej ikke andet", "nej det var det", "nej tak det var det", "nej det var alt", "nej det var det hele",
-		"næ", "næh", "næ tak", "næh tak", "næ ikke mere", "nix", "niks", "no", "nope",
-		"ellers tak", "ikke noget", "ingenting", "ingen ting", "ikke mere", "ikke andet", "ikke flere", "intet",
-		"det var det", "det var alt", "det var bare det", "det var det hele", "det var vist det", "det var alt for nu", "det er alt", "det er det", "det er fint", "det er nok", "det er nok for nu",
-		"jeg er færdig", "vi er færdige", "færdig", "slut", "stop", "stop så", "annuller", "annullér", "glem det", "lad være",
-		"farvel", "hej hej", "hejhej", "vi ses", "hav en god dag", "tak", "mange tak", "tak for hjælpen", "tak for i dag", "bye", "bye bye":
-		return true
-	default:
-		return false
-	}
-}
+// Match complete replies. Product names must not be mistaken for dialogue.
+func (p *Parser) Ending(text string) bool { return contains(p.grammar.Endings, p.dialogueText(text)) }
+func Ending(text string) bool             { return New("en").Ending(text) }
 
-func wantsAnother(text string) bool {
-	switch dialogueText(text) {
-	case "yes please", "sure", "yeah", "yep", "ja", "ja tak", "jo", "jo tak", "gerne", "ja gerne", "meget gerne", "jep", "jeps", "yes", "ja der var en ting mere":
-		return true
-	default:
-		return false
+// Ambiguous replies never approve changes to a list.
+func (p *Parser) Confirmation(text string) (bool, bool) {
+	if p.Ending(text) {
+		return false, true
 	}
+	if contains(p.grammar.Confirmations, p.dialogueText(text)) {
+		return true, true
+	}
+	return false, false
 }
+func Confirmation(text string) (bool, bool) { return New("en").Confirmation(text) }
 
-func additionPrefix(text string) string {
-	// A natural reply such as "ja, en liter mælk" is still a single addition.
-	// Only strip an affirmative before a recognizable amount or command verb.
-	for _, prefix := range []string{"yes ", "yes, ", "yeah ", "yeah, ", "ja ", "ja, ", "jo ", "jo, "} {
-		if !strings.HasPrefix(text, prefix) {
-			continue
-		}
-		rest := separateAttachedUnit(strings.TrimSpace(strings.TrimPrefix(text, prefix)))
-		words := strings.Fields(rest)
-		if len(words) == 0 {
-			return text
-		}
-		_, numberWord := integer(words[0])
-		if decimal.MatchString(words[0]) || numberWord || words[0] == "add" || words[0] == "half" || words[0] == "tilføj" || words[0] == "skriv" || words[0] == "halvanden" || words[0] == "halvandet" || words[0] == "halv" || words[0] == "halvt" {
-			return rest
+func (p *Parser) additionPrefix(text string) string {
+	// Strip an affirmative only before a recognizable amount or command verb.
+	for _, prefix := range p.grammar.AffirmativePrefixes {
+		for _, separator := range []string{" ", ", "} {
+			if !strings.HasPrefix(text, prefix+separator) {
+				continue
+			}
+			rest := p.separateAttachedUnit(strings.TrimSpace(strings.TrimPrefix(text, prefix+separator)))
+			words := strings.Fields(rest)
+			if len(words) == 0 {
+				return text
+			}
+			_, numberWord := p.integer(words[0])
+			_, fraction := p.grammar.Fractions[words[0]]
+			if decimal.MatchString(words[0]) || numberWord || fraction || contains(p.grammar.CommandVerbs, words[0]) {
+				return rest
+			}
 		}
 	}
 	return text

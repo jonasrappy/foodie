@@ -19,12 +19,12 @@ var diagnosticProvider = regexp.MustCompile(`^(default|[A-Za-z0-9_.$]+/[A-Za-z0-
 // This is device-authenticated, rate-limited and never changes household data.
 func (s *Server) voiceDiagnostic(w http.ResponseWriter, r *http.Request) {
 	if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {
-		s.problem(w, 415, "Brug JSON til fejlkoden.")
+		s.problem(w, 415, "Send the error code as JSON.")
 		return
 	}
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1024))
 	if err != nil {
-		s.problem(w, 413, "Fejlrapporten er for lang.")
+		s.problem(w, 413, "The error report is too long.")
 		return
 	}
 	var input struct {
@@ -39,18 +39,18 @@ func (s *Server) voiceDiagnostic(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || !diagnosticVersion.MatchString(input.Version) || len(input.Provider) > 240 || !diagnosticProvider.MatchString(input.Provider) || input.Code == nil || *input.Code < 1 || *input.Code > 101 || input.SDK == nil || *input.SDK < 23 || *input.SDK > 100 || input.Ready == nil || input.Heard == nil {
-		s.problem(w, 400, "Ugyldig fejlrapport.")
+		s.problem(w, 400, "Invalid error report.")
 		return
 	}
 	switch input.Phase {
 	case "start", "recognition", "readiness_timeout", "result_timeout":
 	default:
-		s.problem(w, 400, "Ugyldig fejlfase.")
+		s.problem(w, 400, "Invalid error phase.")
 		return
 	}
 	digest := sha256.Sum256([]byte(r.Header.Get("Authorization")))
 	if !s.diagnosticLimiter.Allow(hex.EncodeToString(digest[:]), time.Now()) {
-		s.problem(w, 429, "For mange fejlrapporter.")
+		s.problem(w, 429, "Too many error reports.")
 		return
 	}
 	s.logger.Warn("android speech recognition failed", "version", input.Version, "sdk", *input.SDK,

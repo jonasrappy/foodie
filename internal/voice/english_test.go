@@ -7,9 +7,9 @@ func TestEnglishCommandsAndEndings(t *testing.T) {
 		text, unit string
 		q          float64
 	}{
-		{"two packs of grapes", "pakker", 2}, {"yes, 1 bag of apples", "poser", 1}, {"add three cans of tomatoes to the shopping list", "dåser", 3},
-		{"a bottle of water", "flasker", 1}, {"two bunches of parsley", "bundter", 2}, {"two trays of mushrooms", "bakker", 2}, {"one crate of soda", "kasser", 1},
-		{"two liters of milk", "liter", 2}, {"250 milliliters of cream", "milliliter", 250}, {"two kilos of potatoes", "kilo", 2}, {"500 grams of rice", "gram", 500}, {"two pieces of fruit", "stk.", 2},
+		{"two packs of grapes", "pack", 2}, {"yes, 1 bag of apples", "bag", 1}, {"add three cans of tomatoes to the shopping list", "can", 3},
+		{"a bottle of water", "bottle", 1}, {"two bunches of parsley", "bunch", 2}, {"two trays of mushrooms", "tray", 2}, {"one crate of soda", "crate", 1},
+		{"two liters of milk", "liter", 2}, {"250 milliliters of cream", "milliliter", 250}, {"two kilos of potatoes", "kilogram", 2}, {"500 grams of rice", "gram", 500}, {"two pieces of fruit", "piece", 2},
 		{"one and a half liters of milk", "liter", 1.5}, {"half a liter of milk", "liter", .5}, {"two point five liters of milk", "liter", 2.5},
 	} {
 		command, err := Parse(test.text)
@@ -30,7 +30,7 @@ func TestEnglishCommandsAndEndings(t *testing.T) {
 	if _, clear := Confirmation("maybe"); clear {
 		t.Fatal("ambiguous confirmation accepted")
 	}
-	c := Command{Text: "grapes", Quantity: 1, Unit: "pakker"}
+	c := Command{Text: "grapes", Quantity: 1, Unit: "pack"}
 	if c.ReplyLocalized("en") != "Added 1 pack of grapes to the shopping list." || c.ReplyLocalized("da") != "Tilføjet 1 pakke grapes til indkøbslisten." {
 		t.Fatal("wrong reply language")
 	}

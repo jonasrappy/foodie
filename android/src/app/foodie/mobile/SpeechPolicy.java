@@ -36,19 +36,19 @@ final class SpeechPolicy {
     static String message(int code) {
         switch (code) {
             case 1: case 2:
-                return "Androids taletjeneste kunne ikke få forbindelse. Prøv igen om lidt.";
+                return "Android's speech service couldn't connect. Try again shortly.";
             case 3:
-                return "Taletjenesten kunne ikke åbne mikrofonen. Luk andre apps, der bruger den, og prøv igen.";
+                return "The speech service couldn't open the microphone. Close other apps using it and try again.";
             case 6: case 7:
-                return "Jeg hørte ikke et klart svar. Sig Hey Foodie for at prøve igen.";
+                return "I didn't hear a clear answer. Say Hey Foodie to try again.";
             case 9:
-                return "Androids taletjeneste fik ikke adgang til mikrofonen. Kontrollér mikrofontilladelserne i Android.";
+                return "Android's speech service couldn't access the microphone. Check microphone permissions in Android.";
             case 12: case 13:
-                return "Dansk talegenkendelse er ikke tilgængelig. Åbn mikrofonens indstillinger, og kontrollér taletjenesten.";
+                return "Speech recognition is unavailable in the selected language. Open the microphone settings and check the speech service.";
             case 8: case 10:
-                return "Androids taletjeneste er optaget. Prøv igen om lidt.";
+                return "Android's speech service is busy. Try again shortly.";
             default:
-                return "Androids taletjeneste fejlede. Den præcise fejl står under mikrofonens indstillinger.";
+                return "Android's speech service failed. You can find the error in the microphone settings.";
         }
     }
 }

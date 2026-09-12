@@ -48,15 +48,15 @@ final class AppUpdater {
         try {
             String name = "foodie-" + System.currentTimeMillis() + ".apk";
             DownloadManager.Request request = new DownloadManager.Request(uri)
-                .setTitle("Foodie").setDescription(I18n.text("Henter opdatering …"))
+                .setTitle("Foodie").setDescription(I18n.text("Downloading update …"))
                 .setMimeType("application/vnd.android.package-archive")
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setDestinationInExternalFilesDir(activity, Environment.DIRECTORY_DOWNLOADS, name);
             long id = downloads.enqueue(request);
             prefs.edit().putLong("updateDownload", id).putString("updateFile", name).putInt("updateFromCode", BuildConfig.VERSION_CODE).putBoolean("updatePresented", false).apply();
-            message("Henter opdatering …");
+            message("Downloading update …");
             handler.removeCallbacks(poll); handler.post(poll);
-        } catch (RuntimeException error) { message("Kunne ikke hente opdateringen. Tryk Opdater for at prøve igen."); }
+        } catch (RuntimeException error) { message("Could not download the update. Tap Update to try again."); }
     }
     private void checkDownload() {
         if (!resumed || checking) return;
@@ -67,14 +67,14 @@ final class AppUpdater {
             if (result == null || !result.moveToFirst()) { clear(id); return; }
             int status = result.getInt(result.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
             if (status == DownloadManager.STATUS_FAILED) {
-                clear(id); message("Kunne ikke hente opdateringen. Tryk Opdater for at prøve igen.");
+                clear(id); message("Could not download the update. Tap Update to try again.");
             } else if (status == DownloadManager.STATUS_SUCCESSFUL) {
                 if (!prefs.getBoolean("updatePresented", false)) install(id);
             } else {
                 handler.removeCallbacks(poll); handler.postDelayed(poll, 1500);
             }
         } catch (RuntimeException error) {
-            message("Kunne ikke åbne opdateringen. Tryk Opdater for at prøve igen.");
+            message("Could not open the update. Tap Update to try again.");
         } finally { checking = false; }
     }
     @SuppressWarnings("deprecation")
@@ -88,12 +88,12 @@ final class AppUpdater {
             PackageInfo candidate = pm.getPackageArchiveInfo(new File(directory, name).getAbsolutePath(), PackageManager.GET_SIGNATURES);
             PackageInfo installed = pm.getPackageInfo(activity.getPackageName(), PackageManager.GET_SIGNATURES);
             if (candidate == null || !activity.getPackageName().equals(candidate.packageName) || !sameSignatures(candidate.signatures, installed.signatures)) {
-                clear(id); message("Opdateringen passer ikke til denne app. Hent en APK med samme app-id og signeringsnøgle."); return;
+                clear(id); message("This update does not match this app. Use an APK with the same application ID and signing key."); return;
             }
             if (candidate.versionCode <= installed.versionCode) { clear(id); return; }
             prefs.edit().putBoolean("updatePresented", true).apply();
             if (Build.VERSION.SDK_INT >= 26 && !pm.canRequestPackageInstalls()) {
-                message("Tillad opdateringer fra Foodie på den næste skærm.");
+                message("Allow updates from Foodie on the next screen.");
                 activity.startActivityForResult(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + activity.getPackageName())), INSTALL_PERMISSION);
                 return;
             }
@@ -104,7 +104,7 @@ final class AppUpdater {
             activity.startActivity(intent);
         } catch (Exception error) {
             prefs.edit().putBoolean("updatePresented", true).apply();
-            message("Kunne ikke åbne opdateringen. Tryk Opdater for at prøve igen.");
+            message("Could not open the update. Tap Update to try again.");
         }
     }
     void permissionReturned() {

@@ -8,7 +8,7 @@ const fs = require('node:fs');
   const browser = await chromium.launch({ headless: true, executablePath: process.env.MAD_CHROMIUM_PATH || undefined, args: ['--no-sandbox'] });
   try {
     const options = { viewport: { width: 1280, height: 800 }, hasTouch: true, serviceWorkers: 'block' };
-    const native = await browser.newContext({ ...options, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-X200) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 MadTablet/7.0 FoodieAndroid/8' });
+    const native = await browser.newContext({ ...options, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-X200) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 MadTablet/7.0 FoodieAndroid/9' });
     const web = await browser.newContext({ ...options, viewport: { width: 1200, height: 750 } });
     const p = await native.newPage(), p2 = await web.newPage(), errors = [];
     for (const page of [p, p2]) {
@@ -32,7 +32,7 @@ const fs = require('node:fs');
     assert.equal(await p2.locator('#install-dialog').count(), 0);
     const prefix = 'Tablet ' + Date.now() + ' ', name = prefix + 'mælk';
     const saved = () => p.waitForFunction(() => JSON.parse(localStorage.getItem('mad.outbox') || '[]').length === 0 && !document.querySelector('.item.busy'));
-    const add = async (kind, text, quantity = '1', unit = 'stk.') => {
+    const add = async (kind, text, quantity = '1', unit = 'piece') => {
       await p.locator('#' + kind + '-input').fill(text);
       if (kind === 'shopping') { await p.locator('#shopping-quantity').fill(quantity); await p.locator('#shopping-unit').selectOption(unit); }
       await p.locator('.' + kind + ' .add-button').click();
@@ -51,7 +51,7 @@ const fs = require('node:fs');
     assert.equal(await p.locator('#toast').textContent(), 'Tilføjet');
     assert.equal(await p.locator('.addition-flight').count(), 1);
     assert.equal(await p.locator('.item.queued').count(), 1);
-    assert.equal(await p.locator('#shopping-quantity').inputValue(), '1'); assert.equal(await p.locator('#shopping-unit').inputValue(), 'stk.');
+    assert.equal(await p.locator('#shopping-quantity').inputValue(), '1'); assert.equal(await p.locator('#shopping-unit').inputValue(), 'piece');
     await add('shopping', prefix + 'bananer', '6');
     assert.equal(await p.locator('.item.queued').count(), 2);
     releaseAdd(); await saved(); await p.unroute('**/api/items');
@@ -85,7 +85,7 @@ const fs = require('node:fs');
     await p.locator('#edit-name').fill(prefix + 'grøntsagslasagne'); await p.locator('#amount-form [type=submit]').click();
     await p2.getByRole('button', { name: 'Ret ' + prefix + 'grøntsagslasagne', exact: true }).waitFor();
     // Offline additions and quantities survive a page restart and replay once.
-    await native.setOffline(true); await add('shopping', prefix + 'offline', '2', 'poser');
+    await native.setOffline(true); await add('shopping', prefix + 'offline', '2', 'bag');
     assert.equal(await p.locator('.item.queued').count(), 1);
     let blockPosts = true;
     await p.route('**/api/items', route => blockPosts ? route.abort('internetdisconnected') : route.continue());
@@ -122,8 +122,8 @@ const fs = require('node:fs');
     await badge.waitFor({ state: 'detached' });
     await p.locator('.removal-clone').waitFor({ state: 'detached' });
     assert.equal(await p.locator('#toast').textContent(), 'Slettet');
-    await p.locator('#shopping-input').fill('Min næste kladde'); await p.locator('#shopping-quantity').fill('2'); await p.locator('#shopping-unit').selectOption('bakker');
-    await p.reload(); assert.equal(await p.locator('#shopping-input').inputValue(), 'Min næste kladde'); assert.equal(await p.locator('#shopping-quantity').inputValue(), '2'); assert.equal(await p.locator('#shopping-unit').inputValue(), 'bakker');
+    await p.locator('#shopping-input').fill('Min næste kladde'); await p.locator('#shopping-quantity').fill('2'); await p.locator('#shopping-unit').selectOption('tray');
+    await p.reload(); assert.equal(await p.locator('#shopping-input').inputValue(), 'Min næste kladde'); assert.equal(await p.locator('#shopping-quantity').inputValue(), '2'); assert.equal(await p.locator('#shopping-unit').inputValue(), 'tray');
     assert.equal(await p.locator('#login-view').isVisible(), false); assert.deepEqual(errors, []);
     console.log('PASS: native/browser login and install visibility, quantity units and editing, instant queued additions, receipt/flight animation, keyboard blur and newest-first ordering, two-device SSE, optimistic checks and conflict rollback, bot purchased exclusions, meal editing, offline/restart queue, lost-response idempotency, nine viewport layouts, contained scrolling, delete confirmation/cancel/animation and persistent drafts/login.');
   } finally { await browser.close(); }

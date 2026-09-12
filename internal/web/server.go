@@ -48,17 +48,17 @@ func New(db *store.Store, c config.Config, publicDir string, logger *slog.Logger
 	if c.Timezone == "" {
 		c.Timezone = "UTC"
 	}
-	return &Server{language: c.Language, timezone: c.Timezone, diagnosticLimiter: auth.NewLimiter(), voiceSlots: make(chan struct{}, 1), store: db, auth: auth.New(c), limiter: auth.NewLimiter(), loginSlots: make(chan struct{}, 4), publicDir: publicDir, hub: newHub(), logger: logger}
+	return &Server{language: i18n.Get(c.Language).Language, timezone: c.Timezone, diagnosticLimiter: auth.NewLimiter(), voiceSlots: make(chan struct{}, 1), store: db, auth: auth.New(c), limiter: auth.NewLimiter(), loginSlots: make(chan struct{}, 4), publicDir: publicDir, hub: newHub(), logger: logger}
 }
 
-var assets = map[string]string{"/": "index.html", "/robots.txt": "robots.txt", "/app.js": "app.js", "/foodie-3d.js": "foodie-3d.js", "/style.css": "style.css", "/manifest.webmanifest": "manifest.webmanifest", "/sw.js": "sw.js", "/icon.svg": "icon.svg", "/icon-192.png": "icon-192.png", "/icon-512.png": "icon-512.png", "/apple-touch-icon.png": "apple-touch-icon.png"}
+var assets = map[string]string{"/": "index.html", "/robots.txt": "robots.txt", "/app.js": "app.js", "/legacy-units.js": "legacy-units.js", "/foodie-3d.js": "foodie-3d.js", "/style.css": "style.css", "/manifest.webmanifest": "manifest.webmanifest", "/sw.js": "sw.js", "/icon.svg": "icon.svg", "/icon-192.png": "icon-192.png", "/icon-512.png": "icon-512.png", "/apple-touch-icon.png": "apple-touch-icon.png"}
 var contentTypes = map[string]string{".html": "text/html; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml", ".png": "image/png"}
 var itemPath = regexp.MustCompile(`^/api/items/([a-f0-9]{32})$`)
 
 func (s *Server) uiVersion() (string, error) {
 	hash := sha256.New()
 	hash.Write(i18n.JSON(s.language))
-	for _, file := range []string{"index.html", "app.js", "style.css", "sw.js", "manifest.webmanifest", "foodie-3d.js"} {
+	for _, file := range []string{"index.html", "app.js", "legacy-units.js", "style.css", "sw.js", "manifest.webmanifest", "foodie-3d.js"} {
 		data, err := os.ReadFile(filepath.Join(s.publicDir, file))
 		if err != nil {
 			return "", err
@@ -160,12 +160,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !strings.HasPrefix(r.URL.Path, "/api/") {
-		s.problem(w, 404, "Siden findes ikke.")
+		s.problem(w, 404, "Page not found.")
 		return
 	}
 	role := s.auth.Authenticate(r.Header.Get("Authorization"))
 	if role == auth.Unauthenticated {
-		s.problem(w, 401, "Log ind med husets kode.")
+		s.problem(w, 401, "Log in with the household password.")
 		return
 	}
 	if r.URL.Path == "/api/v1/requirements" && r.Method == http.MethodGet {
@@ -186,7 +186,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if input.Revision == nil || *input.Revision < 0 || *input.Revision > 9007199254740991 {
-			s.problem(w, 400, "Angiv revision fra GET /api/v1/requirements.")
+			s.problem(w, 400, "Provide the revision from GET /api/v1/requirements.")
 			return
 		}
 		state, err := s.store.Reset(r.Context(), *input.Revision)
@@ -202,7 +202,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if role != auth.Device {
-		s.problem(w, 403, "Bot-token kan kun hente krav og nulstille listerne.")
+		s.problem(w, 403, "Bot tokens can only read requirements and reset the lists.")
 		return
 	}
 	switch {
@@ -235,7 +235,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		match := itemPath.FindStringSubmatch(r.URL.Path)
 		if match == nil || (r.Method != http.MethodPatch && r.Method != http.MethodDelete) {
-			s.problem(w, 404, "Endpoint findes ikke.")
+			s.problem(w, 404, "Endpoint not found.")
 			return
 		}
 		// Raw optional fields distinguish absent from JSON null, which is invalid.
@@ -251,7 +251,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if input.Version == nil || *input.Version < 1 || *input.Version > 9007199254740991 {
-			s.problem(w, 400, "Angiv linjens version.")
+			s.problem(w, 400, "Provide the item's version.")
 			return
 		}
 		edit := store.Edit{Version: *input.Version}
@@ -259,7 +259,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if input.Text != nil {
 				var text string
 				if string(input.Text) == "null" || json.Unmarshal(input.Text, &text) != nil {
-					s.problem(w, 400, "Ugyldig tekst.")
+					s.problem(w, 400, "Invalid text.")
 					return
 				}
 				edit.Text = &text
@@ -268,7 +268,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if input.Quantity != nil {
 				var quantity float64
 				if string(input.Quantity) == "null" || json.Unmarshal(input.Quantity, &quantity) != nil {
-					s.problem(w, 400, "Ugyldigt antal.")
+					s.problem(w, 400, "Invalid quantity.")
 					return
 				}
 				edit.Quantity = &quantity
@@ -276,7 +276,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if input.Unit != nil {
 				var unit string
 				if string(input.Unit) == "null" || json.Unmarshal(input.Unit, &unit) != nil {
-					s.problem(w, 400, "Ugyldig enhed.")
+					s.problem(w, 400, "Invalid unit.")
 					return
 				}
 				edit.Unit = &unit
@@ -284,7 +284,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if input.Checked != nil {
 				var checked bool
 				if string(input.Checked) == "null" || json.Unmarshal(input.Checked, &checked) != nil {
-					s.problem(w, 400, "Ugyldig afkrydsning.")
+					s.problem(w, 400, "Invalid checked value.")
 					return
 				}
 				edit.Checked = &checked
@@ -312,7 +312,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	if !s.limiter.Allow(ip, time.Now()) {
 		w.Header().Set("Retry-After", "900")
-		s.problem(w, 429, "For mange forsøg. Prøv igen om 15 minutter.")
+		s.problem(w, 429, "Too many attempts. Try again in 15 minutes.")
 		return
 	}
 	var input struct {
@@ -323,7 +323,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if input.Password == nil || auth.TextLength(*input.Password) > 200 {
-		s.problem(w, 401, "Koden er ikke rigtig. Prøv igen.")
+		s.problem(w, 401, "Incorrect password. Try again.")
 		return
 	}
 	select {
@@ -331,11 +331,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-s.loginSlots }()
 	default:
 		w.Header().Set("Retry-After", "2")
-		s.problem(w, 503, "Prøv igen om et øjeblik.")
+		s.problem(w, 503, "Please try again shortly.")
 		return
 	}
 	if !s.auth.CheckPassword(*input.Password) {
-		s.problem(w, 401, "Koden er ikke rigtig. Prøv igen.")
+		s.problem(w, 401, "Incorrect password. Try again.")
 		return
 	}
 	token, err := s.auth.IssueToken()
@@ -359,7 +359,7 @@ type requirementsResponse struct {
 }
 
 func (s *Server) requirements(state store.State) requirementsResponse {
-	result := requirementsResponse{ShoppingItems: state.Shopping, Revision: state.Revision, UpdatedAt: state.UpdatedAt, Timezone: s.timezone, RequiredMeals: []string{}, RequiredShoppingItems: []string{}, AlreadyPurchasedItems: []string{}, Instructions: "Retterne skal med i næste uges madplan. required_shopping_items skal købes. already_purchased_items er allerede købt og må ikke købes igen, heller ikke som ingredienser fra madplanen. Find selv resten. Nulstil først efter gennemført bestilling, med revisionen fra dette svar."}
+	result := requirementsResponse{ShoppingItems: state.Shopping, Revision: state.Revision, UpdatedAt: state.UpdatedAt, Timezone: s.timezone, RequiredMeals: []string{}, RequiredShoppingItems: []string{}, AlreadyPurchasedItems: []string{}, Instructions: "Include these meals in next week's plan. Buy required_shopping_items. Do not buy already_purchased_items again, including as recipe ingredients. Plan the remaining meals and ingredients yourself. Reset only after the order is completed, using this response's revision."}
 	result.Instructions = i18n.Text(s.language, result.Instructions)
 	for _, item := range state.Meals {
 		result.RequiredMeals = append(result.RequiredMeals, item.Text)
@@ -376,7 +376,7 @@ func (s *Server) requirements(state store.State) requirementsResponse {
 func (s *Server) events(w http.ResponseWriter, r *http.Request) {
 	ch, ok := s.hub.subscribe()
 	if !ok {
-		s.problem(w, 503, "For mange forbindelser.")
+		s.problem(w, 503, "Too many connections.")
 		return
 	}
 	defer s.hub.unsubscribe(ch)
@@ -449,7 +449,7 @@ func decode(w http.ResponseWriter, r *http.Request, target any) error {
 		if errors.As(err, &tooLarge) {
 			return httpError{413, "For mange data."}
 		}
-		return httpError{400, "Kunne ikke læse forespørgslen."}
+		return httpError{400, "Could not read the request."}
 	}
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 || trimmed[0] != '{' {
@@ -479,10 +479,10 @@ func (s *Server) fail(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, context.Canceled):
 		return
 	case errors.Is(err, context.DeadlineExceeded):
-		s.problem(w, 503, "Serveren er optaget. Prøv igen.")
+		s.problem(w, 503, "The server is busy. Please try again.")
 	default:
 		s.logger.Error("request failed", "method", r.Method, "path", r.URL.Path, "error", err)
-		s.problem(w, 500, "Der skete en fejl. Prøv igen.")
+		s.problem(w, 500, "Something went wrong. Please try again.")
 	}
 }
 func respond(w http.ResponseWriter, status int, data any) {
@@ -502,7 +502,7 @@ func (s *Server) problem(w http.ResponseWriter, status int, message string) {
 }
 
 func (s *Server) shoppingLabel(item store.Item) string {
-	if item.Quantity == 1 && item.Unit == "stk." {
+	if item.Quantity == 1 && item.Unit == "piece" {
 		return item.Text
 	}
 	return strconv.FormatFloat(item.Quantity, 'f', -1, 64) + " " + i18n.Unit(s.language, item.Unit, item.Quantity) + " " + item.Text

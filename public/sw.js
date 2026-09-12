@@ -1,6 +1,6 @@
-const CACHE = 'foodie-shell-v5';
+const CACHE = 'foodie-shell-v6';
 const LAZY = ['/foodie-3d.js'];
-const SHELL = ['/', '/language.js', '/style.css', '/app.js', '/icon.svg?v=foodie-122', '/icon-192.png?v=foodie-122', '/icon-512.png?v=foodie-122', '/apple-touch-icon.png?v=foodie-122', '/manifest.webmanifest'];
+const SHELL = ['/', '/language.js', '/style.css', '/app.js', '/legacy-units.js', '/icon.svg?v=foodie-122', '/icon-192.png?v=foodie-122', '/icon-512.png?v=foodie-122', '/apple-touch-icon.png?v=foodie-122', '/manifest.webmanifest'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', event => {

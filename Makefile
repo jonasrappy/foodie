@@ -1,5 +1,5 @@
 GO ?= go
-VERSION ?= 1.3.2
+VERSION ?= 1.4.0
 
 .PHONY: build test check
 build:

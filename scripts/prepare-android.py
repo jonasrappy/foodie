@@ -24,8 +24,8 @@ try:
     app_id = values.get('ANDROID_APPLICATION_ID', 'app.foodie.mobile')
     if not re.fullmatch(r'[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+', app_id):
         raise ValueError('Invalid ANDROID_APPLICATION_ID')
-    version = values.get('ANDROID_VERSION_NAME', '1.3.2')
-    code = values.get('ANDROID_VERSION_CODE', '8')
+    version = values.get('ANDROID_VERSION_NAME', '1.4.0')
+    code = values.get('ANDROID_VERSION_CODE', '9')
     if not re.fullmatch(r'\d+\.\d+\.\d+', version) or not code.isdigit() or not 0 < int(code) < 2100000000:
         raise ValueError('Invalid Android version')
     sdk = values.get('ANDROID_SDK_ROOT') or values.get('ANDROID_HOME', '')
@@ -46,7 +46,8 @@ try:
         path.mkdir(parents=True)
     language_assets=build / 'language-assets'
     language_assets.mkdir(exist_ok=True)
-    shutil.copyfile(str(root / 'internal/i18n/locales' / (language+'.json')),str(language_assets / 'i18n.json'))
+    pack = json.loads((root / 'internal/i18n/locales' / (language+'.json')).read_text())
+    (language_assets / 'i18n.json').write_text(json.dumps({key:pack[key] for key in ('language','locale','messages')},ensure_ascii=False))
     (language_assets / 'release.json').write_text(json.dumps({'version_code':int(code),'version_name':version}))
     dest = build / 'src' / app_id.replace('.', '/')
     dest.mkdir(parents=True)

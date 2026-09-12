@@ -24,3 +24,5 @@ Optional environment variables:
 The individual `.cjs` scripts also accept `MAD_TEST_URL`, `MAD_TEST_PASSWORD` and `MAD_TEST_BOT_TOKEN` for a manually prepared test instance. Those scripts perform real mutations. Use the isolated runner unless you specifically need a separate test server.
 
 `android-update.cjs` checks authenticated update discovery, newer-version comparison, the signed download button and the one-time migration dialog for older APKs. The Android installer and unknown-source permission screen still need a physical-device check.
+
+`language.cjs` runs in English and Danish. It checks English source keys and unit IDs, translated dropdown labels, legacy drafts, cached state and an offline retry whose original request already succeeded. Go tests separately check every spoken unit alias, isolate confirmations and number words by language, and verify the SQLite unit migration and pending voice confirmations.

@@ -19,8 +19,9 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
 	"github.com/jonasrappy/foodie/internal/auth"
+	"github.com/jonasrappy/foodie/internal/units"
+	_ "modernc.org/sqlite"
 )
 
 //go:embed schema.sql
@@ -127,8 +128,8 @@ func Open(path string) (*Store, error) {
 	if err = tx.QueryRowContext(ctx, "PRAGMA user_version").Scan(&version); err != nil {
 		return nil, err
 	}
-	if version > 4 {
-		return nil, fmt.Errorf("database schema %d is newer than supported version 4", version)
+	if version > 5 {
+		return nil, fmt.Errorf("database schema %d is newer than supported version 5", version)
 	}
 	if version == 0 {
 		if _, err = tx.ExecContext(ctx, schema); err != nil {
@@ -150,6 +151,12 @@ func Open(path string) (*Store, error) {
 			return nil, err
 		}
 	}
+	if version < 5 {
+		if err = migrateUnits(ctx, tx); err != nil {
+			return nil, err
+		}
+	}
+
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}
@@ -224,11 +231,11 @@ var requestID = regexp.MustCompile(`^[a-zA-Z0-9-]{16,80}$`)
 
 func CleanText(text string) (string, error) {
 	if strings.ContainsAny(text, "\r\n") {
-		return "", Invalid("Skriv én ting pr. linje, højst 300 tegn.")
+		return "", Invalid("Write one item per line, up to 300 characters.")
 	}
 	text = strings.TrimSpace(text)
 	if text == "" || auth.TextLength(text) > 300 {
-		return "", Invalid("Skriv én ting pr. linje, højst 300 tegn.")
+		return "", Invalid("Write one item per line, up to 300 characters.")
 	}
 	return text, nil
 }
@@ -242,7 +249,7 @@ type addPayload struct {
 
 func (s *Store) Add(ctx context.Context, input Add) (State, error) {
 	if (input.Kind != "shopping" && input.Kind != "meals") || len(input.Texts) == 0 || len(input.Texts) > 50 || !requestID.MatchString(input.RequestID) {
-		return State{}, Invalid("Ugyldig liste eller for mange linjer (maks. 50).")
+		return State{}, Invalid("Invalid list or too many lines (maximum 50).")
 	}
 	clean := make([]string, len(input.Texts))
 	for i, text := range input.Texts {
@@ -252,15 +259,15 @@ func (s *Store) Add(ctx context.Context, input Add) (State, error) {
 			return State{}, err
 		}
 	}
-	quantity, unit := 1.0, "stk."
+	quantity, unit := 1.0, "piece"
 	if input.Quantity != nil {
 		quantity = *input.Quantity
 	}
 	if input.Unit != nil {
-		unit = *input.Unit
+		unit = units.NormalizeLegacy(*input.Unit)
 	}
 	if input.Kind != "shopping" && (input.Quantity != nil || input.Unit != nil) {
-		return State{}, Invalid("Antal og enhed gælder kun indkøbsvarer.")
+		return State{}, Invalid("Quantity and unit only apply to shopping items.")
 	}
 	if err := ValidateAmount(quantity, unit); err != nil {
 		return State{}, err
@@ -275,9 +282,11 @@ func (s *Store) Add(ctx context.Context, input Add) (State, error) {
 		err := tx.QueryRowContext(ctx, "SELECT payload FROM requests WHERE id=?", input.RequestID).Scan(&previous)
 		if err == nil {
 			// Compare decoded values: Node and Go escape JSON strings differently.
-			old := addPayload{Quantity: 1, Unit: "stk."}
-			if json.Unmarshal([]byte(previous), &old) != nil || !reflect.DeepEqual(old, payload) {
-				return false, Conflict("Forespørgslen er allerede brugt.")
+			old := addPayload{Quantity: 1, Unit: "piece"}
+			decodeErr := json.Unmarshal([]byte(previous), &old)
+			old.Unit = units.NormalizeLegacy(old.Unit)
+			if decodeErr != nil || !reflect.DeepEqual(old, payload) {
+				return false, Conflict("This request has already been used.")
 			}
 			return false, nil
 		}
@@ -289,7 +298,7 @@ func (s *Store) Add(ctx context.Context, input Add) (State, error) {
 			return false, err
 		}
 		if count+len(clean) > 1000 {
-			return false, Invalid("Listen er fuld. Fjern nogle linjer først.")
+			return false, Invalid("The list is full. Remove some items first.")
 		}
 		stamp := now()
 		for _, text := range clean {
@@ -310,13 +319,13 @@ func (s *Store) Edit(ctx context.Context, id string, input Edit, remove bool) (S
 		var item Item
 		err := tx.QueryRowContext(ctx, "SELECT kind,text,checked,version,quantity,unit FROM items WHERE id=?", id).Scan(&item.Kind, &item.Text, &item.Checked, &item.Version, &item.Quantity, &item.Unit)
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, Conflict("Linjen er allerede fjernet.")
+			return false, Conflict("This item has already been removed.")
 		}
 		if err != nil {
 			return false, err
 		}
 		if input.Version != item.Version {
-			return false, Conflict("Linjen er ændret på en anden enhed. Prøv igen.")
+			return false, Conflict("This item changed on another device. Please try again.")
 		}
 		if remove {
 			_, err = tx.ExecContext(ctx, "DELETE FROM items WHERE id=?", id)
@@ -330,19 +339,19 @@ func (s *Store) Edit(ctx context.Context, id string, input Edit, remove bool) (S
 		}
 		if input.Checked != nil {
 			if item.Kind != "shopping" {
-				return false, Invalid("Ugyldig afkrydsning.")
+				return false, Invalid("Invalid checked value.")
 			}
 			item.Checked = *input.Checked
 		}
 		if input.Quantity != nil || input.Unit != nil {
 			if item.Kind != "shopping" {
-				return false, Invalid("Antal og enhed gælder kun indkøbsvarer.")
+				return false, Invalid("Quantity and unit only apply to shopping items.")
 			}
 			if input.Quantity != nil {
 				item.Quantity = *input.Quantity
 			}
 			if input.Unit != nil {
-				item.Unit = *input.Unit
+				item.Unit = units.NormalizeLegacy(*input.Unit)
 			}
 			if err := ValidateAmount(item.Quantity, item.Unit); err != nil {
 				return false, err
@@ -359,7 +368,7 @@ func (s *Store) Reset(ctx context.Context, revision int64) (State, error) {
 			return false, err
 		}
 		if state.Revision != revision {
-			return false, Conflict("Listerne er ændret. Hent dem igen og håndter de nye ønsker før nulstilling.")
+			return false, Conflict("The lists have changed. Fetch them again and handle the new requests before resetting.")
 		}
 		encoded, err := json.Marshal(state)
 		if err != nil {
@@ -376,11 +385,10 @@ func (s *Store) Reset(ctx context.Context, revision int64) (State, error) {
 // ValidateAmount bounds quantities and permits two decimal places, e.g. 0.5 liter.
 func ValidateAmount(quantity float64, unit string) error {
 	if math.IsNaN(quantity) || math.IsInf(quantity, 0) || quantity < 0.01 || quantity > 9999 || math.Abs(quantity*100-math.Round(quantity*100)) > 0.000001 {
-		return Invalid("Antal skal være mellem 0,01 og 9999 med højst to decimaler.")
+		return Invalid("Quantity must be between 0.01 and 9999 with at most two decimal places.")
 	}
-	switch unit {
-	case "stk.", "liter", "milliliter", "kilo", "gram", "pakker", "poser", "dåser", "flasker", "bundter", "bakker", "kasser":
+	if units.Valid(unit) {
 		return nil
 	}
-	return Invalid("Vælg en gyldig enhed.")
+	return Invalid("Choose a valid unit.")
 }

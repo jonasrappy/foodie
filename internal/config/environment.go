@@ -148,7 +148,7 @@ func Generate(path string) error {
 		}
 		return base64.RawURLEncoding.EncodeToString(b), nil
 	}
-	values := map[string]string{"FOODIE_LANGUAGE": "en", "FOODIE_TIMEZONE": "UTC", "FOODIE_LISTEN": "127.0.0.1:8082", "FOODIE_DATA_DIR": "./data", "FOODIE_PUBLIC_DIR": "./public", "FOODIE_SITE_URL": "https://foodie.example.com", "ANDROID_APPLICATION_ID": "app.foodie.mobile", "ANDROID_SIGN_DIR": "./.private/android-signing", "ANDROID_KEY_ALIAS": "foodie", "ANDROID_VERSION_NAME": "1.3.1", "ANDROID_VERSION_CODE": "7"}
+	values := map[string]string{"FOODIE_LANGUAGE": "en", "FOODIE_TIMEZONE": "UTC", "FOODIE_LISTEN": "127.0.0.1:8082", "FOODIE_DATA_DIR": "./data", "FOODIE_PUBLIC_DIR": "./public", "FOODIE_SITE_URL": "https://foodie.example.com", "ANDROID_APPLICATION_ID": "app.foodie.mobile", "ANDROID_SIGN_DIR": "./.private/android-signing", "ANDROID_KEY_ALIAS": "foodie", "ANDROID_VERSION_NAME": "1.4.0", "ANDROID_VERSION_CODE": "9"}
 	for _, key := range []string{"FOODIE_PASSWORD", "FOODIE_PASSWORD_SALT", "FOODIE_SESSION_SECRET", "FOODIE_BOT_TOKEN"} {
 		value, err := random()
 		if err != nil {

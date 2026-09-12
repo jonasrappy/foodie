@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +27,7 @@ type VoiceResponse struct {
 // Audio itself is never stored. A lost HTTP response can reuse the transcript.
 func (s *Store) VoiceTranscript(ctx context.Context, id, fingerprint string, save *string) (string, bool, error) {
 	if !requestID.MatchString(id) {
-		return "", false, Invalid("Ugyldig forespørgsel.")
+		return "", false, Invalid("Invalid request.")
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -39,7 +38,7 @@ func (s *Store) VoiceTranscript(ctx context.Context, id, fingerprint string, sav
 	err = tx.QueryRowContext(ctx, "SELECT fingerprint,transcript FROM voice_transcripts WHERE id=?", id).Scan(&old, &text)
 	if err == nil {
 		if old != fingerprint {
-			return "", false, Conflict("Forespørgslen er allerede brugt.")
+			return "", false, Conflict("This request has already been used.")
 		}
 		return text, true, tx.Commit()
 	}
@@ -50,16 +49,13 @@ func (s *Store) VoiceTranscript(ctx context.Context, id, fingerprint string, sav
 		return "", false, nil
 	}
 	if len(*save) > 2000 {
-		return "", false, Invalid("Kommandoen er for lang.")
+		return "", false, Invalid("The command is too long.")
 	}
 	_, err = tx.ExecContext(ctx, "INSERT INTO voice_transcripts VALUES(?,?,?)", id, fingerprint, *save)
 	if err != nil {
 		return "", false, err
 	}
 	return *save, true, tx.Commit()
-}
-func spokenNumber(n float64) string {
-	return strings.ReplaceAll(strconv.FormatFloat(math.Round(n*100)/100, 'f', -1, 64), ".", ",")
 }
 func voiceMatches(state State, c voice.Command) ([]Item, string) {
 	rows := []Item{}
@@ -71,9 +67,6 @@ func voiceMatches(state State, c voice.Command) ([]Item, string) {
 	encoded, _ := json.Marshal(rows)
 	hash := sha256.Sum256(encoded)
 	return rows, hex.EncodeToString(hash[:])
-}
-func duplicateQuestion(c voice.Command, rows []Item) (string, *Item) {
-	return duplicateQuestionLocalized(c, rows, "da")
 }
 func duplicateQuestionLocalized(c voice.Command, rows []Item, language string) (string, *Item) {
 	number := func(n float64) string { return i18n.Number(language, n) }
@@ -90,31 +83,31 @@ func duplicateQuestionLocalized(c voice.Command, rows []Item, language string) (
 		}
 	}
 	if target != nil {
-		extra := fmt.Sprintf(i18n.Text(language, "%s ekstra"), number(c.Quantity))
+		extra := fmt.Sprintf(i18n.Text(language, "%s more"), number(c.Quantity))
 		if c.Quantity == 1 {
-			extra = i18n.Text(language, "en ekstra")
+			extra = i18n.Text(language, "one more")
 		}
-		return fmt.Sprintf(i18n.Text(language, "Der er allerede %s %s %s på indkøbslisten. Skal jeg tilføje %s, så det bliver %s %s?"), number(total), unit(c.Unit, total), c.Text, extra, number(total+c.Quantity), unit(c.Unit, total+c.Quantity)), target
+		return fmt.Sprintf(i18n.Text(language, "Your shopping list already has %s %s of %s. Should I add %s, making it %s %s?"), number(total), unit(c.Unit, total), c.Text, extra, number(total+c.Quantity), unit(c.Unit, total+c.Quantity)), target
 	}
 	if len(rows) > 0 {
 		item := rows[0]
 		if item.Checked {
-			return fmt.Sprintf(i18n.Text(language, "%s er allerede krydset af på indkøbslisten. Skal jeg tilføje %s %s som en ny vare?"), c.Text, number(c.Quantity), unit(c.Unit, c.Quantity)), nil
+			return fmt.Sprintf(i18n.Text(language, "%s is already checked off the shopping list. Should I add %s %s as a new item?"), c.Text, number(c.Quantity), unit(c.Unit, c.Quantity)), nil
 		}
-		return fmt.Sprintf(i18n.Text(language, "Der er allerede %s %s %s på indkøbslisten. Skal jeg tilføje %s %s som en ny linje?"), number(item.Quantity), unit(item.Unit, item.Quantity), c.Text, number(c.Quantity), unit(c.Unit, c.Quantity)), nil
+		return fmt.Sprintf(i18n.Text(language, "Your shopping list already has %s %s of %s. Should I add %s %s as a new line?"), number(item.Quantity), unit(item.Unit, item.Quantity), c.Text, number(c.Quantity), unit(c.Unit, c.Quantity)), nil
 	}
-	return fmt.Sprintf(i18n.Text(language, "Listen er ændret. Skal jeg tilføje %s %s %s til indkøbslisten?"), number(c.Quantity), unit(c.Unit, c.Quantity), c.Text), nil
+	return fmt.Sprintf(i18n.Text(language, "The list has changed. Should I add %s %s of %s to the shopping list?"), number(c.Quantity), unit(c.Unit, c.Quantity), c.Text), nil
 }
 
 // ApplyVoice plans or commits in one SQLite transaction. A confirmation is tied
 // to the matching row versions; concurrent edits always produce a fresh question.
 func (s *Store) ApplyVoice(ctx context.Context, id string, replyID string, newCommand *voice.Command, answer *bool) (VoiceResponse, State, error) {
-	return s.ApplyVoiceLocalized(ctx, id, replyID, newCommand, answer, "da")
+	return s.ApplyVoiceLocalized(ctx, id, replyID, newCommand, answer, "en")
 }
 func (s *Store) ApplyVoiceLocalized(ctx context.Context, id string, replyID string, newCommand *voice.Command, answer *bool, language string) (VoiceResponse, State, error) {
 	var response VoiceResponse
 	if !requestID.MatchString(id) || !requestID.MatchString(replyID) {
-		return response, State{}, Invalid("Ugyldig forespørgsel.")
+		return response, State{}, Invalid("Invalid request.")
 	}
 	state, err := s.write(ctx, func(tx *sql.Tx) (bool, error) {
 		var replay string
@@ -136,7 +129,7 @@ func (s *Store) ApplyVoiceLocalized(ctx context.Context, id string, replyID stri
 		var command voice.Command
 		if fresh {
 			if newCommand == nil {
-				return false, Invalid("Spørg mig igen om varen.")
+				return false, Invalid("Please ask me about the item again.")
 			}
 			command = *newCommand
 			raw, _ := json.Marshal(command)
@@ -150,7 +143,7 @@ func (s *Store) ApplyVoiceLocalized(ctx context.Context, id string, replyID stri
 				return false, json.Unmarshal([]byte(cached), &response)
 			}
 			if time.Now().Unix()-created > 120 {
-				return false, Invalid("Bekræftelsen er udløbet. Spørg mig igen om varen.")
+				return false, Invalid("The confirmation expired. Please ask me about the item again.")
 			}
 		}
 		if _, err = CleanText(command.Text); err != nil {
@@ -167,7 +160,7 @@ func (s *Store) ApplyVoiceLocalized(ctx context.Context, id string, replyID stri
 		question, target := duplicateQuestionLocalized(command, matches, language)
 		changed := false
 		if answer != nil && !*answer {
-			response = VoiceResponse{Kind: "cancelled", Speech: i18n.Text(language, "Okay. Jeg ændrer ikke indkøbslisten.")}
+			response = VoiceResponse{Kind: "cancelled", Speech: i18n.Text(language, "Okay. I won't change the shopping list.")}
 			done = true
 		} else if (fresh && len(matches) == 0) || (answer != nil && *answer && signature == currentSignature) {
 			if target != nil {
@@ -178,7 +171,7 @@ func (s *Store) ApplyVoiceLocalized(ctx context.Context, id string, replyID stri
 				_, err = tx.ExecContext(ctx, "UPDATE items SET quantity=?,version=version+1,updated_at=? WHERE id=?", next, now(), target.ID)
 			} else {
 				if len(nowState.Shopping)+len(nowState.Meals) >= 1000 {
-					return false, Invalid("Listen er fuld. Fjern nogle linjer først.")
+					return false, Invalid("The list is full. Remove some items first.")
 				}
 				random := make([]byte, 16)
 				if _, err = rand.Read(random); err != nil {
@@ -195,7 +188,7 @@ func (s *Store) ApplyVoiceLocalized(ctx context.Context, id string, replyID stri
 			response = VoiceResponse{Kind: "added", Speech: command.ReplyLocalized(language)}
 		} else {
 			if !fresh && signature != currentSignature && len(matches) > 0 {
-				question = i18n.Text(language, "Listen er ændret. ") + question
+				question = i18n.Text(language, "The list has changed. ") + question
 			}
 			response = VoiceResponse{Kind: "confirm", Speech: question, ConfirmationID: id}
 		}

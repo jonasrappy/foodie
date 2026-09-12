@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"github.com/jonasrappy/foodie/internal/i18n"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,18 +14,18 @@ import (
 // frontend dropdowns. A newly offered unit must also work through this API.
 func TestVoiceUnderstandsEveryDropdownUnit(t *testing.T) {
 	cases := []struct{ unit, one, many, name string }{
-		{"stk.", "et stykke", "to stykker", "agurk"},
+		{"piece", "et stykke", "to stykker", "agurk"},
 		{"liter", "en liter", "to litre", "mælk"},
 		{"milliliter", "en milliliter", "to millilitre", "fløde"},
-		{"kilo", "et kilo", "to kilogram", "kartofler"},
+		{"kilogram", "et kilo", "to kilogram", "kartofler"},
 		{"gram", "et gram", "to gram", "sukker"},
-		{"pakker", "en pakke", "2 pakker", "pepsi max"},
-		{"poser", "en pose", "to poser", "ris"},
-		{"dåser", "en dåse", "to dåser", "tomater"},
-		{"flasker", "en flaske", "to flasker", "vand"},
-		{"bundter", "et bundt", "to bundter", "persille"},
-		{"bakker", "en bakke", "to bakker", "vindruer"},
-		{"kasser", "en kasse", "to kasser", "pepsi max"},
+		{"pack", "en pakke", "2 pakker", "pepsi max"},
+		{"bag", "en pose", "to poser", "ris"},
+		{"can", "en dåse", "to dåser", "tomater"},
+		{"bottle", "en flaske", "to flasker", "vand"},
+		{"bunch", "et bundt", "to bundter", "persille"},
+		{"tray", "en bakke", "to bakker", "vindruer"},
+		{"crate", "en kasse", "to kasser", "pepsi max"},
 	}
 	html, err := os.ReadFile(filepath.Join(testPublicDir(), "index.html"))
 	if err != nil {
@@ -39,7 +40,7 @@ func TestVoiceUnderstandsEveryDropdownUnit(t *testing.T) {
 		if len(selectHTML) != 2 {
 			t.Fatalf("missing %s dropdown", id)
 		}
-		options := regexp.MustCompile(`<option[^>]*>([^<]+)</option>`).FindAllSubmatch(selectHTML[1], -1)
+		options := regexp.MustCompile(`<option value="([^"]+)"[^>]*>[^<]+</option>`).FindAllSubmatch(selectHTML[1], -1)
 		if len(options) != len(cases) {
 			t.Fatalf("voice coverage does not match %s: %d dropdown units, %d tested units", id, len(options), len(cases))
 		}
@@ -53,7 +54,7 @@ func TestVoiceUnderstandsEveryDropdownUnit(t *testing.T) {
 		t.Run(tc.unit, func(t *testing.T) {
 			s, server, f := testServer(t)
 			code, reply := sendVoiceText(t, server.URL, f.Token, tc.many+" "+tc.name, "unit-add-00000000001", "")
-			if code != 200 || reply.Kind != "added" || reply.Speech != "Tilføjet 2 "+tc.unit+" "+tc.name+" til indkøbslisten." {
+			if code != 200 || reply.Kind != "added" || reply.Speech != "Tilføjet 2 "+i18n.Unit("da", tc.unit, 2)+" "+tc.name+" til indkøbslisten." {
 				t.Fatal(code, reply)
 			}
 			state, err := s.store.Snapshot(t.Context())
@@ -68,12 +69,12 @@ func TestVoiceUnderstandsEveryDropdownUnit(t *testing.T) {
 			var requirements struct {
 				Shopping []string `json:"required_shopping_items"`
 			}
-			if code != 200 || json.Unmarshal(data, &requirements) != nil || len(requirements.Shopping) != 1 || requirements.Shopping[0] != "2 "+tc.unit+" "+tc.name {
+			if code != 200 || json.Unmarshal(data, &requirements) != nil || len(requirements.Shopping) != 1 || requirements.Shopping[0] != "2 "+i18n.Unit("da", tc.unit, 2)+" "+tc.name {
 				t.Fatalf("Grok received the wrong amount: %d %s", code, data)
 			}
 			// Singular speech must find the existing unit and ask before increasing it.
 			code, reply = sendVoiceText(t, server.URL, f.Token, tc.one+" "+tc.name, "unit-duplicate-00001", "")
-			if code != 200 || reply.Kind != "confirm" || !strings.Contains(reply.Speech, "bliver 3 "+tc.unit) {
+			if code != 200 || reply.Kind != "confirm" || !strings.Contains(reply.Speech, "bliver 3 "+i18n.Unit("da", tc.unit, 3)) {
 				t.Fatal("singular unit failed to match plural", code, reply)
 			}
 			code, reply = sendVoiceText(t, server.URL, f.Token, "ja tak", "unit-answer-00000001", reply.ConfirmationID)

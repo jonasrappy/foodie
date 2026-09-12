@@ -26,16 +26,16 @@ func isAndroidDownload(path string) bool {
 func (s *Server) androidDownloadSession(w http.ResponseWriter, r *http.Request) {
 	role := s.auth.Authenticate(r.Header.Get("Authorization"))
 	if role == auth.Unauthenticated {
-		s.problem(w, 401, "Log ind for at hente Android-appen.")
+		s.problem(w, 401, "Log in to download the Android app.")
 		return
 	}
 	if role != auth.Device {
-		s.problem(w, 403, "APK-download kræver login i appen.")
+		s.problem(w, 403, "Downloading the APK requires a household login.")
 		return
 	}
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
-		s.problem(w, 405, "Brug POST til at forberede download.")
+		s.problem(w, 405, "Use POST to prepare a download.")
 		return
 	}
 	if _, err := os.Stat(filepath.Join(filepath.Dir(s.publicDir), "downloads", "foodie.apk")); err != nil {
@@ -69,16 +69,16 @@ func (s *Server) androidDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if role == auth.Unauthenticated {
-		s.problem(w, 401, "Log ind for at hente Android-appen.")
+		s.problem(w, 401, "Log in to download the Android app.")
 		return
 	}
 	if role != auth.Device {
-		s.problem(w, 403, "APK-download kræver login i appen.")
+		s.problem(w, 403, "Downloading the APK requires a household login.")
 		return
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
-		s.problem(w, 405, "Brug GET til at hente appen.")
+		s.problem(w, 405, "Use GET to download the app.")
 		return
 	}
 	file, err := os.Open(filepath.Join(filepath.Dir(s.publicDir), "downloads", "foodie.apk"))
@@ -105,11 +105,11 @@ func (s *Server) androidDownload(w http.ResponseWriter, r *http.Request) {
 func (s *Server) androidRelease(w http.ResponseWriter, r *http.Request) {
 	role := s.auth.Authenticate(r.Header.Get("Authorization"))
 	if role == auth.Unauthenticated {
-		s.problem(w, 401, "Log ind for at hente Android-appen.")
+		s.problem(w, 401, "Log in to download the Android app.")
 		return
 	}
 	if role != auth.Device {
-		s.problem(w, 403, "APK-download kræver login i appen.")
+		s.problem(w, 403, "Downloading the APK requires a household login.")
 		return
 	}
 	if r.Method != http.MethodGet {

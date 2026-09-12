@@ -1,90 +1,82 @@
 package store
 
 import (
-	"database/sql"
 	"encoding/json"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/jonasrappy/foodie/internal/units"
 	"github.com/jonasrappy/foodie/internal/voice"
 )
 
-func tableContents(t *testing.T, db *sql.DB) map[string]string {
-	t.Helper()
-	contents := make(map[string]string)
-	for _, name := range []string{"items", "meta", "requests", "resets", "voice_transcripts", "voice_intents", "voice_replies"} {
-		rows, err := db.Query("SELECT rowid,* FROM " + name + " ORDER BY rowid")
-		if err != nil {
-			t.Fatal(err)
-		}
-		columns, err := rows.Columns()
-		if err != nil {
-			t.Fatal(err)
-		}
-		data := [][]any{}
-		for rows.Next() {
-			values, targets := make([]any, len(columns)), make([]any, len(columns))
-			for i := range values {
-				targets[i] = &values[i]
-			}
-			if err := rows.Scan(targets...); err != nil {
-				t.Fatal(err)
-			}
-			data = append(data, values)
-		}
-		if err := rows.Err(); err != nil {
-			t.Fatal(err)
-		}
-		rows.Close()
-		encoded, err := json.Marshal(data)
-		if err != nil {
-			t.Fatal(err)
-		}
-		contents[name] = string(encoded)
-	}
-	return contents
-}
-
-func TestKasserMigrationPreservesDataAndPendingConfirmation(t *testing.T) {
+func TestEnglishUnitMigrationPreservesDataAndPendingConfirmations(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "mad.sqlite")
 	db, err := openDB(path, "rwc")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
-	if _, err = db.Exec(schema + migration002 + migration003); err != nil {
+	if _, err = db.Exec(schema + migration002 + migration003 + migration004); err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`
-INSERT INTO items VALUES('b','shopping','pepsi max',0,7,'same-time','edited-time',2,'pakker');
-INSERT INTO items VALUES('a','shopping','pepsi max',1,2,'same-time','earlier-time',1,'stk.');
-INSERT INTO items VALUES('meal','meals','lasagne',0,1,'same-time','same-time',1,'stk.');
-UPDATE items SET rowid=41 WHERE id='a';
-UPDATE meta SET revision=12,updated_at='meta-time';
-INSERT INTO requests VALUES('old-request-0000001','{"kind":"shopping","texts":["old"]}');
-INSERT INTO resets VALUES(8,'archive-time',6,'{"revision":6,"shopping":[],"meals":[]}');`)
-	if err != nil {
+	oldUnits := []string{"stk.", "liter", "milliliter", "kilo", "gram", "pakker", "poser", "dåser", "flasker", "bundter", "bakker", "kasser"}
+	for i, unit := range oldUnits {
+		if _, err = db.Exec(`INSERT INTO items(rowid,id,kind,text,checked,version,created_at,updated_at,quantity,unit) VALUES(?,?,'shopping',?,?,7,'same-time','edited-time',2,?)`, 100-i, unit, "product "+unit, (i+1)%2, unit); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err = db.Exec(`INSERT INTO items VALUES('meal','meals','family recipe',0,3,'same-time','same-time',1,'stk.'); UPDATE meta SET revision=12,updated_at='meta-time'; INSERT INTO requests VALUES('old-request-0000001','{"kind":"shopping","texts":["product pakker"],"quantity":2,"unit":"pakker"}')`); err != nil {
 		t.Fatal(err)
 	}
 	old := &Store{db: db}
-	command := voice.Command{Text: "pepsi max", Quantity: 1, Unit: "pakker"}
-	text := "en pakke pepsi max"
-	if _, _, err = old.VoiceTranscript(t.Context(), "old-voice-000000001", "original-fingerprint", &text); err != nil {
+	before, err := old.Snapshot(t.Context())
+	if err != nil {
 		t.Fatal(err)
 	}
-	question, _, err := old.ApplyVoice(t.Context(), "old-voice-000000001", "old-voice-000000001", &command, nil)
-	if err != nil || question.Kind != "confirm" {
-		t.Fatal(question, err)
+	archived, _ := json.Marshal(before)
+	if _, err = db.Exec(`INSERT INTO resets VALUES(8,'archive-time',6,?)`, string(archived)); err != nil {
+		t.Fatal(err)
 	}
-	before := tableContents(t, db)
+	command := voice.Command{Text: "product pakker", Quantity: 1, Unit: "pakker"}
+	encoded, _ := json.Marshal(command)
+	_, signature := voiceMatches(before, command)
+	question := VoiceResponse{Kind: "confirm", Speech: "a previously spoken question", ConfirmationID: "old-voice-000000001"}
+	cached, _ := json.Marshal(question)
+	if _, err = db.Exec(`INSERT INTO voice_intents VALUES(?,?,?, ?,0,unixepoch())`, question.ConfirmationID, string(encoded), signature, string(cached)); err != nil {
+		t.Fatal(err)
+	}
+	// A stale question must remain stale across the unit migration.
+	if _, err = db.Exec(`INSERT INTO voice_intents VALUES('stale-voice-0000001',?,'stale-signature',?,0,unixepoch())`, string(encoded), string(cached)); err != nil {
+		t.Fatal(err)
+	}
+	transcript := "en pakke product pakker"
+	if _, _, err = old.VoiceTranscript(t.Context(), question.ConfirmationID, "original-fingerprint", &transcript); err != nil {
+		t.Fatal(err)
+	}
 	db.Close()
 	s, err := Open(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after := tableContents(t, s.db); !reflect.DeepEqual(before, after) {
-		t.Fatal("migration changed existing values, rowids, order or cached requests")
+	expected := before
+	expected.Shopping = append([]Item{}, before.Shopping...)
+	expected.Meals = append([]Item{}, before.Meals...)
+	for _, rows := range [][]Item{expected.Shopping, expected.Meals} {
+		for i := range rows {
+			rows[i].Unit = units.NormalizeLegacy(rows[i].Unit)
+		}
+	}
+	after, err := s.Snapshot(t.Context())
+	if err != nil || !reflect.DeepEqual(expected, after) {
+		t.Fatal("migration changed user data, ordering, quantities, checked state or versions", err)
+	}
+	var snapshotText string
+	if err = s.db.QueryRow("SELECT snapshot FROM resets WHERE id=8").Scan(&snapshotText); err != nil {
+		t.Fatal(err)
+	}
+	var archive State
+	if err = json.Unmarshal([]byte(snapshotText), &archive); err != nil || !reflect.DeepEqual(expected, archive) {
+		t.Fatal("archive migration changed user content", err)
 	}
 	s.Close()
 	s, err = Open(path)
@@ -92,27 +84,33 @@ INSERT INTO resets VALUES(8,'archive-time',6,'{"revision":6,"shopping":[],"meals
 		t.Fatal(err)
 	}
 	defer s.Close()
-	if !reflect.DeepEqual(before, tableContents(t, s.db)) {
-		t.Fatal("reopening repeated or changed the migration")
+	after, err = s.Snapshot(t.Context())
+	if err != nil || !reflect.DeepEqual(expected, after) {
+		t.Fatal("reopening repeated the migration", err)
+	}
+	// Both an old client's retry and a new client's retry keep the original request ID.
+	for _, unit := range []string{"pakker", "pack"} {
+		replay, err := s.Add(t.Context(), Add{Kind: "shopping", Texts: []string{"product pakker"}, Quantity: pointer(2.0), Unit: &unit, RequestID: "old-request-0000001"})
+		if err != nil || !reflect.DeepEqual(expected, replay) {
+			t.Fatal("migration broke addition idempotency", err)
+		}
 	}
 	yes := true
 	reply, state, err := s.ApplyVoice(t.Context(), question.ConfirmationID, "after-migrate-yes-01", nil, &yes)
-	if err != nil || reply.Kind != "added" || state.Shopping[0].Quantity != 3 {
-		t.Fatal("pending voice confirmation was invalidated by migration", reply, state, err)
+	if err != nil || reply.Kind != "added" || state.Revision != 13 {
+		t.Fatal("valid pending voice confirmation lost", reply, err)
 	}
-	state, err = s.Add(t.Context(), Add{Kind: "shopping", Texts: []string{"squash"}, Quantity: pointer(1.0), Unit: pointer("kasser"), RequestID: "new-kasser-request1"})
-	found := false
-	for _, item := range state.Shopping {
-		found = found || (item.Text == "squash" && item.Quantity == 1 && item.Unit == "kasser")
+	reply, state, err = s.ApplyVoice(t.Context(), "stale-voice-0000001", "after-stale-yes-001", nil, &yes)
+	if err != nil || reply.Kind != "confirm" || state.Revision != 13 {
+		t.Fatal("stale confirmation became valid", reply, err)
 	}
-	if err != nil || !found {
-		t.Fatal("new unit cannot be saved after migration", state, err)
+	if got, found, err := s.VoiceTranscript(t.Context(), question.ConfirmationID, "original-fingerprint", nil); err != nil || !found || got != transcript {
+		t.Fatal("transcript changed", err)
 	}
-	if _, err = s.db.Exec("UPDATE items SET unit='invalid' WHERE id='a'"); err == nil {
-		t.Fatal("unit constraint was lost")
-	}
-	if _, err = s.db.Exec("UPDATE items SET quantity=0 WHERE id='a'"); err == nil {
-		t.Fatal("quantity constraint was lost")
+	for _, assignment := range []string{"unit='invalid'", "unit='pakker'", "quantity=0"} {
+		if _, err = s.db.Exec("UPDATE items SET " + assignment + " WHERE id='pakker'"); err == nil {
+			t.Fatal("database constraints lost")
+		}
 	}
 	var integrity string
 	if err = s.db.QueryRow("PRAGMA integrity_check").Scan(&integrity); err != nil || integrity != "ok" {

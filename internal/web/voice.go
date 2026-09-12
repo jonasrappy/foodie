@@ -19,16 +19,16 @@ func (s *Server) voiceCommand(w http.ResponseWriter, r *http.Request) {
 	case s.voiceSlots <- struct{}{}:
 		defer func() { <-s.voiceSlots }()
 	default:
-		s.problem(w, 429, "Jeg er optaget. Prøv igen om lidt.")
+		s.problem(w, 429, "I'm busy. Try again shortly.")
 		return
 	}
 	if strings.Split(r.Header.Get("Content-Type"), ";")[0] != "application/json" {
-		s.problem(w, 415, "Brug en talekommando som tekst.")
+		s.problem(w, 415, "Send the voice command as text.")
 		return
 	}
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
 	if err != nil {
-		s.problem(w, 413, "Kommandoen er for lang.")
+		s.problem(w, 413, "The command is too long.")
 		return
 	}
 	var input struct {
@@ -37,7 +37,7 @@ func (s *Server) voiceCommand(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&input) != nil || decoder.Decode(new(any)) != io.EOF || len(input.Text) > 2000 || strings.TrimSpace(input.Text) == "" {
-		s.problem(w, 400, "Ugyldig talekommando.")
+		s.problem(w, 400, "Invalid voice command.")
 		return
 	}
 	id, confirmation := r.Header.Get("X-Request-ID"), r.Header.Get("X-Voice-Confirmation")
@@ -55,19 +55,20 @@ func (s *Server) voiceCommand(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	parser := voice.New(s.language)
 	var command *voice.Command
 	var answer *bool
 	intentID := id
 	if confirmation != "" {
 		intentID = confirmation
-		if yes, clear := voice.Confirmation(transcript); clear {
+		if yes, clear := parser.Confirmation(transcript); clear {
 			answer = &yes
 		} else {
-			respond(w, 200, store.VoiceResponse{Kind: "confirm", Speech: i18n.Text(s.language, "Vil du tilføje det ekstra? Sig ja eller nej."), ConfirmationID: confirmation})
+			respond(w, 200, store.VoiceResponse{Kind: "confirm", Speech: i18n.Text(s.language, "Would you like to add more? Say yes or no."), ConfirmationID: confirmation})
 			return
 		}
 	} else {
-		parsed, parseErr := voice.Parse(transcript)
+		parsed, parseErr := parser.Parse(transcript)
 		if errors.Is(parseErr, voice.ErrCancelled) {
 			respond(w, 200, store.VoiceResponse{Kind: "cancelled", Speech: i18n.Text(s.language, parseErr.Error())})
 			return

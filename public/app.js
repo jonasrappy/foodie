@@ -14,7 +14,7 @@ let updateCheckRunning = false, posting = false, postRetryTimer;
 let saveErrorShown = false;
 let downloadPreparation, downloadExpires = 0, downloadFailure = '', downloadRequested = false;
 const additions = new Map(), mutations = new Map();
-try { for (const item of JSON.parse(storage.get('outbox') || '[]')) if (item.request_id && ['shopping', 'meals'].includes(item.kind) && Array.isArray(item.texts)) additions.set(item.request_id, item); } catch {}
+try { for (const item of JSON.parse(storage.get('outbox') || '[]')) if (item.request_id && ['shopping', 'meals'].includes(item.kind) && Array.isArray(item.texts)) { item.unit = normalizeLegacyUnit(item.unit); additions.set(item.request_id, item); } } catch {}
 const nativeVersion = Number(navigator.userAgent.match(/MadTablet\/(\d+)/)?.[1] || 0);
 const installedAndroidCode = Number(navigator.userAgent.match(/FoodieAndroid\/(\d+)/)?.[1] || 0);
 let androidUpdateAvailable = false, androidUpdateChecking = false;
@@ -40,8 +40,8 @@ function status(online = connected) {
   connected = online;
   const busy = additions.size + mutations.size > 0;
   $('sync-dot').classList.toggle('waiting', !online || busy);
-  $('sync-label').textContent = busy ? (online ? t('Gemmer …') : t('Afventer net')) : online ? t('Synkroniseret') : 'Offline';
-  $('sync-control').title = online ? t('Listerne er opdateret. Tryk for at synkronisere igen.') : t('Ingen forbindelse. Tryk for at prøve igen.');
+  $('sync-label').textContent = busy ? (online ? t('Saving …') : t('Waiting for connection')) : online ? t('Synced') : t('Offline');
+  $('sync-control').title = online ? t('Your lists are up to date. Tap to sync again.') : t('No connection. Tap to try again.');
 }
 function showApp() {
   document.body.classList.add('authenticated');
@@ -72,11 +72,11 @@ async function api(endpoint, options = {}) {
   let response;
   try {
     response = await fetch(endpoint, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...options.headers }, cache: 'no-store' });
-  } catch { status(false); throw new Error(t('Ingen forbindelse. Din tekst bliver her. Prøv igen, når nettet er tilbage.')); }
+  } catch { status(false); throw new Error(t('No connection. Your text is saved here. Try again when you\'re online.')); }
   const data = await response.json();
   if (!response.ok) {
     if (response.status === 401 && endpoint !== '/api/login') showLogin();
-    const error = new Error(data.error || t('Kunne ikke gemme. Prøv igen.')); error.status = response.status; throw error;
+    const error = new Error(data.error || t('Couldn\'t save. Please try again.')); error.status = response.status; throw error;
   }
   return data;
 }
@@ -123,7 +123,7 @@ function draw() {
     const list = $(kind + '-list');
     const previous = new Map([...list.children].map(row => [row.dataset.id, row.getBoundingClientRect()]));
     const rows = current[kind].filter(item => mutations.get(item.id)?.method !== 'DELETE').map(item => ({ ...item, ...(mutations.get(item.id)?.data || {}) }));
-    for (const pending of additions.values()) if (pending.kind === kind) pending.texts.forEach((text, i) => rows.push({ id: 'pending-' + pending.request_id + '-' + i, kind, text, quantity: pending.quantity || 1, unit: pending.unit || 'stk.', queued: true }));
+    for (const pending of additions.values()) if (pending.kind === kind) pending.texts.forEach((text, i) => rows.push({ id: 'pending-' + pending.request_id + '-' + i, kind, text, quantity: pending.quantity || 1, unit: pending.unit || 'piece', queued: true }));
     rows.reverse(); // API order is oldest first; the tablet always shows the newest entry at the top.
     const known = new Map([...list.children].map(row => [row.dataset.id, row]));
     rows.forEach((item, index) => {
@@ -132,13 +132,13 @@ function draw() {
       known.delete(item.id); row.item = item;
       row.classList.toggle('checked', !!item.checked); row.classList.toggle('queued', !!item.queued);
       row.classList.toggle('busy', mutations.has(item.id));
-      const name = row.querySelector('.item-name'); name.textContent = item.text; name.setAttribute('aria-label', t('Ret ') + item.text);
+      const name = row.querySelector('.item-name'); name.textContent = item.text; name.setAttribute('aria-label', t('Edit ') + item.text);
       const check = row.querySelector('.item-check');
-      if (check) { check.checked = !!item.checked; check.setAttribute('aria-label', t('Købt: ') + item.text); }
+      if (check) { check.checked = !!item.checked; check.setAttribute('aria-label', t('Purchased: ') + item.text); }
       const number = row.querySelector('.meal-number'); if (number) number.textContent = String(index + 1).padStart(2, '0');
       const amount = row.querySelector('.amount-button');
-      if (amount) { amount.textContent = formatAmount(item.quantity ?? 1, item.unit || 'stk.'); amount.setAttribute('aria-label', t('Ret antal og enhed for ') + item.text); }
-      row.querySelector('.remove-button').setAttribute('aria-label', t('Fjern ') + item.text);
+      if (amount) { amount.textContent = formatAmount(item.quantity ?? 1, item.unit || 'piece'); amount.setAttribute('aria-label', t('Edit quantity and unit for ') + item.text); }
+      row.querySelector('.remove-button').setAttribute('aria-label', t('Remove ') + item.text);
       row.querySelectorAll('button,input').forEach(control => control.disabled = !!item.queued || mutations.has(item.id));
       if (list.children[index] !== row) list.insertBefore(row, list.children[index] || null);
       if (fresh) animate(row);
@@ -159,7 +159,7 @@ function draw() {
     }
     $(kind + '-empty').hidden = rows.length > 0;
     const count = kind === 'shopping' ? rows.filter(item => !item.checked).length : rows.length;
-    $(kind + '-count').textContent = count + (kind === 'shopping' ? count === 1 ? t(' vare') : t(' varer') : count === 1 ? t(' ønske') : t(' ønsker'));
+    $(kind + '-count').textContent = count + (kind === 'shopping' ? count === 1 ? t(' item') : t(' items') : count === 1 ? t(' request') : t(' requests'));
   }
 }
 function motionLayer() {
@@ -196,7 +196,7 @@ let removingItem;
 function confirmRemoval(item) {
   if (item.queued || mutations.has(item.id)) return;
   removingItem = { ...item };
-  $('delete-title').textContent = item.kind === 'shopping' ? t('Slet varen?') : t('Slet madønsket?');
+  $('delete-title').textContent = item.kind === 'shopping' ? t('Delete this item?') : t('Delete this meal request?');
   $('delete-name').textContent = item.text;
   $('delete-dialog').showModal(); $('cancel-delete').focus(); animate($('delete-dialog'));
 }
@@ -220,8 +220,8 @@ async function mutate(item, method, data) {
 function openEditor(item, amountOnly = false) {
   if (item.queued || mutations.has(item.id)) return;
   editing = { id: item.id, version: item.version, kind: item.kind };
-  $('amount-title').textContent = item.kind === 'shopping' ? t('Ret vare') : t('Ret madønske');
-  $('edit-name').value = item.text; $('edit-quantity').value = item.quantity ?? 1; $('edit-unit').value = item.unit || 'stk.';
+  $('amount-title').textContent = item.kind === 'shopping' ? t('Edit item') : t('Edit meal request');
+  $('edit-name').value = item.text; $('edit-quantity').value = item.quantity ?? 1; $('edit-unit').value = item.unit || 'piece';
   $('edit-amount-fields').hidden = item.kind !== 'shopping';
   $('edit-quantity').disabled = $('edit-unit').disabled = item.kind !== 'shopping';
   $('amount-error').textContent = ''; $('amount-dialog').showModal();
@@ -243,14 +243,14 @@ $('amount-form').addEventListener('submit', async event => {
         const state = await api('/api/state'); acceptState(state);
         const latest = state[edit.kind].find(item => item.id === edit.id);
         if (latest) editing.version = latest.version;
-        $('amount-error').textContent = latest ? t('Linjen blev ændret på en anden enhed. Kontrollér din rettelse og tryk Gem igen.') : t('Linjen er fjernet på en anden enhed.');
+        $('amount-error').textContent = latest ? t('This item changed on another device. Check your changes and save again.') : t('This item was removed on another device.');
       } catch {}
     }
   } finally { button.disabled = false; }
 });
 function fitField(field) { field.style.height = '51px'; field.style.height = Math.min(94, Math.max(51, field.scrollHeight)) + 'px'; }
 function saveAmount() { storage.set('draft.amount', JSON.stringify({ quantity: $('shopping-quantity').value, unit: $('shopping-unit').value })); }
-try { const draft = JSON.parse(storage.get('draft.amount')); if (draft) { $('shopping-quantity').value = draft.quantity; $('shopping-unit').value = draft.unit; } } catch {}
+try { const draft = JSON.parse(storage.get('draft.amount')); if (draft) { $('shopping-quantity').value = draft.quantity; $('shopping-unit').value = normalizeLegacyUnit(draft.unit); } } catch {}
 for (const id of ['shopping-quantity', 'shopping-unit']) $(id).addEventListener('input', saveAmount);
 for (const button of document.querySelectorAll('[data-step]')) {
   button.addEventListener('click', () => {
@@ -270,7 +270,7 @@ async function flushAdditions() {
         additions.delete(id); persistOutbox(); acceptState(state, true); status(true); saveErrorShown = false;
       } catch (error) {
         status(false);
-        if (!saveErrorShown) { toast(error.status === 401 ? t('Log ind igen for at gemme dine ventende linjer.') : t('Linjerne er gemt på tabletten og sendes, når forbindelsen er tilbage.')); saveErrorShown = true; }
+        if (!saveErrorShown) { toast(error.status === 401 ? t('Log in again to save your pending items.') : t('Your items are saved on this device and will sync when you\'re back online.')); saveErrorShown = true; }
         if (error.status && error.status !== 401 && error.status < 500 && error.status !== 429) {
           // A rejected payload must remain editable, rather than blocking later saves.
           const field = $(item.kind + '-input');
@@ -299,23 +299,23 @@ for (const form of document.querySelectorAll('.composer')) {
     event.preventDefault();
     const texts = input.value.split(/\r?\n/).map(text => text.trim()).filter(Boolean);
     if (!texts.length) { input.focus(); return; }
-    if (texts.length > 50 || texts.some(text => text.length > 300)) { toast(t('Højst 50 linjer ad gangen og 300 tegn pr. linje.')); return; }
+    if (texts.length > 50 || texts.some(text => text.length > 300)) { toast(t('Use up to 50 lines at a time and 300 characters per line.')); return; }
     const amount = kind === 'shopping' ? { quantity: Number($('shopping-quantity').value), unit: $('shopping-unit').value } : {};
     const payload = JSON.stringify({ texts, ...amount });
-    let pending; try { pending = JSON.parse(storage.get('pending.' + kind)); } catch {}
-    if (pending?.payload === JSON.stringify(texts) && (kind !== 'shopping' || (amount.quantity === 1 && amount.unit === 'stk.'))) pending.payload = payload;
+    let pending; try { pending = normalizeLegacyPending(JSON.parse(storage.get('pending.' + kind))); } catch {}
+    if (pending?.payload === JSON.stringify(texts) && (kind !== 'shopping' || (amount.quantity === 1 && amount.unit === 'piece'))) pending.payload = payload;
     if (!pending || pending.payload !== payload) pending = { payload, id: crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('') };
     additions.set(pending.id, { kind, texts, ...amount, request_id: pending.id });
     // Persist before clearing the composer. Retrying the same request ID is safe,
     // including after closing the app or losing a successful server response.
-    if (!persistOutbox()) { additions.delete(pending.id); toast(t('Enheden kan ikke gemme lokalt. Din tekst står stadig i feltet.')); return; }
+    if (!persistOutbox()) { additions.delete(pending.id); toast(t('This device couldn\'t save locally. Your text is still in the field.')); return; }
     const origin = input.getBoundingClientRect();
     input.value = ''; storage.remove(key); storage.remove('pending.' + kind); fitField(input);
-    if (kind === 'shopping') { $('shopping-quantity').value = '1'; $('shopping-unit').value = 'stk.'; storage.remove('draft.amount'); }
+    if (kind === 'shopping') { $('shopping-quantity').value = '1'; $('shopping-unit').value = 'piece'; storage.remove('draft.amount'); }
     document.activeElement?.blur(); input.blur(); draw(); status();
     $(kind + '-scroll').scrollTop = 0;
     flyAddition(kind, texts[texts.length - 1], origin);
-    const receipt = texts.length === 1 ? t('Tilføjet') : texts.length + (kind === 'shopping' ? t(' varer tilføjet') : t(' madønsker tilføjet'));
+    const receipt = texts.length === 1 ? t('Added') : texts.length + (kind === 'shopping' ? t(' items added') : t(' meal requests added'));
     toast(receipt + (navigator.onLine ? '' : ' · afventer net'), true);
     flushAdditions();
   });
@@ -356,7 +356,7 @@ $('login-form').addEventListener('submit', async event => {
   try {
     const data = await api('/api/login', { method: 'POST', body: JSON.stringify({ password: $('password').value }) });
     token = data.token;
-    if (!storage.set('token', token)) toast(t('Enheden tillader ikke lagring. Login kan ikke huskes.'));
+    if (!storage.set('token', token)) toast(t('This device doesn\'t allow storage. Your login can\'t be remembered.'));
     $('password').value = ''; $('password').blur(); navigator.storage?.persist?.().catch(() => {}); await enter();
   } catch (error) { $('login-error').textContent = error.message; }
   finally { button.disabled = false; }
@@ -364,7 +364,7 @@ $('login-form').addEventListener('submit', async event => {
 // Native speech callbacks are the source of truth. Queued TTS never animates a mouth.
 const foodieDialog = $('foodie-dialog');
 const foodiePhases = new Set(['waking', 'speaking', 'listening', 'hearing', 'thinking']);
-const foodieTitles = { waking: t('Hej med dig'), speaking: 'Foodie', listening: t('Jeg lytter'), hearing: t('Jeg lytter'), thinking: t('Et øjeblik …') };
+const foodieTitles = { waking: t('Hello there'), speaking: 'Foodie', listening: t('I\'m listening'), hearing: t('I\'m listening'), thinking: t('One moment …') };
 let foodieSession = 0, foodieDismissed = 0, foodieCloseTimer, foodieNativeClosures = 0;
 let foodieRenderer, foodieRendererPromise, foodieRendererFailed = false;
 let foodieFrame = { visible: false, phase: 'idle', level: 0 };
@@ -442,7 +442,7 @@ $('voice').addEventListener('click', () => { if (token && nativeVersion >= 3) lo
 window.addEventListener('mad-voice-status', event => {
   if (nativeVersion < 3 || !event.detail) return;
   $('voice').setAttribute('aria-pressed', event.detail.running ? 'true' : 'false');
-  $('voice').title = 'Hey Foodie · ' + (event.detail.status || t('Slået fra'));
+  $('voice').title = 'Hey Foodie · ' + (event.detail.status || t('Off'));
   presentFoodie(event.detail);
 });
 $('native-settings').addEventListener('click', () => { if (token && nativeVersion >= 2) location.href = 'mad-app://settings'; });
@@ -463,7 +463,7 @@ async function requestWake() {
   try {
     wakeLock = await navigator.wakeLock.request('screen'); $('wake').setAttribute('aria-pressed', 'true');
     wakeLock.addEventListener('release', () => $('wake').setAttribute('aria-pressed', 'false'));
-  } catch { toast(t('Enheden tillader ikke at holde skærmen tændt lige nu.')); }
+  } catch { toast(t('This device can\'t keep the screen on right now.')); }
 }
 $('wake').addEventListener('click', async () => { wakeEnabled = !wakeEnabled; if (wakeEnabled) await requestWake(); else await wakeLock?.release(); });
 window.addEventListener('beforeinstallprompt', event => event.preventDefault());
@@ -480,18 +480,18 @@ function prepareAndroidDownload() {
         method: 'POST', headers: { Authorization: 'Bearer ' + deviceToken },
         credentials: 'omit', cache: 'no-store', signal: controller.signal
       });
-      if (!response.ok) { if (response.status === 401) showLogin(); throw Error(t('Kunne ikke hente downloadlinket. Tryk igen.')); }
+      if (!response.ok) { if (response.status === 401) showLogin(); throw Error(t('Couldn\'t get the download link. Tap to try again.')); }
       const data = await response.json();
       if (token !== deviceToken) return false;
       const url = new URL(data.url, location.origin);
-      if (url.origin !== location.origin || url.pathname !== '/api/download/android' || !url.searchParams.has('grant')) throw Error(t('Kunne ikke hente downloadlinket. Tryk igen.'));
+      if (url.origin !== location.origin || url.pathname !== '/api/download/android' || !url.searchParams.has('grant')) throw Error(t('Couldn\'t get the download link. Tap to try again.'));
       url.searchParams.set('t', Date.now());
       downloadExpires = Date.now() + data.expires_in * 1000 - 5000;
       link.download = data.filename; link.href = url.href;
-      link.title = t(androidUpdateAvailable ? 'Opdater Foodie' : 'Hent Android-appen'); downloadFailure = '';
+      link.title = t(androidUpdateAvailable ? 'Update Foodie' : 'Download Android app'); downloadFailure = '';
       return true;
     } catch (error) {
-      downloadFailure = error.name === 'AbortError' || error instanceof TypeError ? t('Ingen forbindelse. Tryk igen, når nettet er tilbage.') : error.message;
+      downloadFailure = error.name === 'AbortError' || error instanceof TypeError ? t('No connection. Try again when you\'re online.') : error.message;
       link.title = downloadFailure;
       return false;
     } finally {
@@ -508,7 +508,7 @@ $('install').addEventListener('click', event => {
   if (Date.now() >= downloadExpires) {
     event.preventDefault();
     if (downloadRequested) return;
-    downloadRequested = true; toast(t('Henter downloadlink …'));
+    downloadRequested = true; toast(t('Preparing download …'));
     prepareAndroidDownload().then(ready => {
       downloadRequested = false;
       if (ready && token) $('install').click(); else if (token) toast(downloadFailure);
@@ -519,7 +519,7 @@ $('install').addEventListener('click', event => {
   // Android's download manager has no access to the browser's cookies.
   const url = new URL($('install').href); url.searchParams.set('t', Date.now());
   $('install').href = url.href;
-  toast(t(installedAndroidCode ? 'Henter opdatering …' : 'Download starter. Åbn APK-filen fra browserens downloads.'));
+  toast(t(installedAndroidCode ? 'Downloading update …' : 'Download started. Open the APK from your browser\'s downloads.'));
 });
 window.addEventListener('appinstalled', () => $('install').hidden = true);
 async function checkAndroidUpdate() {
@@ -538,9 +538,9 @@ async function checkAndroidUpdate() {
     androidUpdateAvailable = release.version_code > installedAndroidCode;
     const link = $('install'); link.hidden = !androidUpdateAvailable;
     if (androidUpdateAvailable) {
-      link.querySelector('span').textContent = t('Opdater Foodie');
-      link.setAttribute('aria-label', t('Opdater Foodie'));
-      link.title = t('Opdater Foodie') + ' ' + release.version_name;
+      link.querySelector('span').textContent = t('Update Foodie');
+      link.setAttribute('aria-label', t('Update Foodie'));
+      link.title = t('Update Foodie') + ' ' + release.version_name;
       if (installedAndroidCode) prepareAndroidDownload();
     }
   } catch {} finally { clearTimeout(timeout); androidUpdateChecking = false; }
@@ -576,6 +576,6 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
 if (token) {
   showApp();
   current = { revision: -1, shopping: [], meals: [] };
-  try { const state = JSON.parse(storage.get('state')); if (state && Array.isArray(state.shopping) && Array.isArray(state.meals)) { current = state; draw(); } } catch {}
+  try { const state = JSON.parse(storage.get('state')); if (state && Array.isArray(state.shopping) && Array.isArray(state.meals)) { for (const item of [...state.shopping, ...state.meals]) item.unit = normalizeLegacyUnit(item.unit); current = state; draw(); } } catch {}
   draw(); enter();
 }

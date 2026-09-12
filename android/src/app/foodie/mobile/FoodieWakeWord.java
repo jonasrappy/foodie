@@ -11,14 +11,14 @@ final class FoodieWakeWord implements AutoCloseable {
  private int samples;
  FoodieWakeWord(Context context) throws IOException {
   File directory=new File(context.getNoBackupFilesDir(),"foodie-kws-1.13.8");
-  if(!directory.isDirectory()&&!directory.mkdirs())throw new IOException("Kunne ikke klargøre Foodie.");
+  if(!directory.isDirectory()&&!directory.mkdirs())throw new IOException("Couldn't prepare Foodie.");
   for(String name:new String[]{"encoder.onnx","decoder.onnx","joiner.onnx","tokens.txt","keywords.txt"}) {
    File file=new File(directory,name);
    // APK updates may tune the wake phrase; the signed asset remains authoritative.
    if(!file.exists()||name.endsWith(".txt")) {
     File temporary=new File(directory,name+".tmp");
     try(InputStream in=context.getAssets().open("foodie/"+name);FileOutputStream out=new FileOutputStream(temporary)){byte[] buffer=new byte[32768];int n;while((n=in.read(buffer))!=-1)out.write(buffer,0,n);out.getFD().sync();}
-    if(!temporary.renameTo(file))throw new IOException("Kunne ikke gemme talemodellen.");
+    if(!temporary.renameTo(file))throw new IOException("Couldn't save the voice model.");
    }
   }
   OnlineTransducerModelConfig transducer=OnlineTransducerModelConfig.builder().setEncoder(new File(directory,"encoder.onnx").getPath()).setDecoder(new File(directory,"decoder.onnx").getPath()).setJoiner(new File(directory,"joiner.onnx").getPath()).build();

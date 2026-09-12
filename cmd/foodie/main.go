@@ -125,7 +125,7 @@ func run(args []string, logger *slog.Logger) error {
 		}
 		password := strings.TrimSuffix(strings.TrimSuffix(string(data), "\n"), "\r")
 		if length := auth.TextLength(password); length < 8 || length > 200 {
-			return errors.New("koden skal være 8–200 tegn")
+			return errors.New("password must contain 8 to 200 characters")
 		}
 		salt := make([]byte, 32)
 		if _, err = rand.Read(salt); err != nil {
