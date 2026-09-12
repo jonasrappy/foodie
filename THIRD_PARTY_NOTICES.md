@@ -9,6 +9,6 @@
 
 The Three.js license is included in the web bundle. Android license notices are in `android/licenses` and are packaged into each APK. `android/vendor-checksums.json` identifies the exact model, native libraries and Java bindings used by the build.
 
-The synthetic WAV files under `android/test/audio` are wake-word regression fixtures. They are not household recordings. Their generation sources are listed in `android/test/README.md`.
+The synthetic WAV files under `test/android/audio` are wake-word regression fixtures. They are not household recordings. Their generation sources are listed in `test/android/README.md`.
 
 Go and build-tool dependencies are listed in `go.mod` and the npm lockfiles. They retain their upstream licenses.

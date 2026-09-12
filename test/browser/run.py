@@ -4,21 +4,23 @@ import json
 import os
 import select
 import shutil
+import sys
 import subprocess
 import tempfile
 from pathlib import Path
+root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(root / 'scripts'))
 from environment import read_environment
 
-root = Path(__file__).resolve().parent.parent
 base_env = {k:v for k,v in os.environ.items() if not k.startswith('FOODIE_')}
-base_env.setdefault('MAD_PLAYWRIGHT_MODULE', str(root / 'test/node_modules/playwright'))
+base_env.setdefault('MAD_PLAYWRIGHT_MODULE', str(root / 'test/browser/node_modules/playwright'))
 with tempfile.TemporaryDirectory(prefix='foodie-browser-') as temporary:
     home = Path(temporary)
     shutil.copytree(str(root / 'public'), str(home / 'public'))
     (home / 'downloads').mkdir()
     apk = home / 'downloads/foodie.apk'
-    built = root / 'android/build/foodie.apk'
-    if built.is_file():
+    built = next((path for path in [root / 'downloads/foodie.apk', root / 'android/build/foodie.apk'] if path.is_file()), None)
+    if built is not None:
         shutil.copyfile(str(built), str(apk))
     else:
         # Tests the authenticated transport, not Android package validity.
@@ -42,7 +44,7 @@ with tempfile.TemporaryDirectory(prefix='foodie-browser-') as temporary:
             env.update(MAD_TEST_URL='http://'+startup['address'], MAD_TEST_PASSWORD=values['FOODIE_PASSWORD'], MAD_TEST_BOT_TOKEN=values['FOODIE_BOT_TOKEN'], MAD_TEST_APK=str(apk), MAD_SCREENSHOTS=os.environ.get('MAD_SCREENSHOTS',str(home/'screenshots')))
             tests = ['browser.cjs','voice-presentation.cjs','download.cjs','android-update.cjs','language.cjs'] if language=='da' else ['english.cjs','language.cjs']
             for name in tests:
-                subprocess.run(['node',str(root/'test'/name)],cwd=str(root),env=env,check=True)
+                subprocess.run(['node',str(root/'test/browser'/name)],cwd=str(root),env=env,check=True)
         finally:
             server.terminate()
             try:

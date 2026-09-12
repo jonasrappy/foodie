@@ -261,7 +261,7 @@ Before updating an existing installation, back up its database, private configur
 make test check build
 ```
 
-This runs Go tests with the race detector, static checks and dependency verification. Tests use temporary databases and synthetic credentials. The credentials under `internal/auth/testdata` are compatibility fixtures, not application defaults.
+This runs Go tests with the race detector, static checks and dependency verification. All test code, runners and fixtures live under `test/`. Use `make test` to include the Go tests stored there. Tests use temporary databases and synthetic credentials. The credentials under `test/fixtures/auth` are compatibility fixtures, not application defaults.
 
 Rebuild the 3D web asset:
 
@@ -272,7 +272,9 @@ npm run --prefix frontend build
 
 The bundled web asset is included so normal server setup does not need Node.js. Its source is `frontend/foodie-avatar.js`. Rendering pauses when the conversation is closed or the page is hidden. Reduced-motion settings use static poses.
 
-Browser and native test commands are documented in `test/README.md` and `android/test/README.md`. Run mutating browser tests against an isolated instance, never against household data.
+Browser and native test commands are documented in `test/README.md` and `test/android/README.md`. Run mutating browser tests against an isolated instance, never against household data.
+
+`make clean` removes Android build intermediates and Python bytecode caches. It keeps the server binary, published APK, local settings, signing keys and databases.
 
 ## License
 

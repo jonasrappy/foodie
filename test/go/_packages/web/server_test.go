@@ -36,7 +36,7 @@ func testPublicDir() string {
 func testServer(t *testing.T) (*Server, *httptest.Server, fixture) {
 	t.Helper()
 	var f fixture
-	data, err := os.ReadFile("../auth/testdata/node.json")
+	data, err := os.ReadFile("../../test/fixtures/auth/node.json")
 	if err != nil {
 		t.Fatal(err)
 	}

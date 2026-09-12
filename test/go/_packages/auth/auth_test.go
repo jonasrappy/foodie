@@ -16,7 +16,7 @@ func TestNodeCompatibilityAndPasswordRotation(t *testing.T) {
 		Password, Bot, Token string
 		Config               config.Config
 	}
-	data, err := os.ReadFile("testdata/node.json")
+	data, err := os.ReadFile("../../test/fixtures/auth/node.json")
 	if err != nil {
 		t.Fatal(err)
 	}

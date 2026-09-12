@@ -8,7 +8,7 @@ import (
 )
 
 func TestAtomicSavePreservesSecretsAndPermissions(t *testing.T) {
-	fixture, err := os.ReadFile("../auth/testdata/node.json")
+	fixture, err := os.ReadFile("../../test/fixtures/auth/node.json")
 	if err != nil {
 		t.Fatal(err)
 	}

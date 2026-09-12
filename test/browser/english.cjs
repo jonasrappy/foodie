@@ -3,7 +3,7 @@ const {chromium}=require(process.env.MAD_PLAYWRIGHT_MODULE||'playwright');
 const assert=require('node:assert/strict');
 (async()=>{
  const base=process.env.MAD_TEST_URL,password=process.env.MAD_TEST_PASSWORD,bot=process.env.MAD_TEST_BOT_TOKEN;
- if(!base||!password||!bot)throw Error('Use scripts/test-browser.py with an isolated instance.');
+ if(!base||!password||!bot)throw Error('Use test/browser/run.py with an isolated instance.');
  const browser=await chromium.launch({headless:true,executablePath:process.env.MAD_CHROMIUM_PATH||undefined,args:['--no-sandbox','--enable-unsafe-swiftshader']});
  try{
   const context=await browser.newContext({viewport:{width:1280,height:800},serviceWorkers:'block',userAgent:'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/143.0.0.0 Safari/537.36 MadTablet/7.0'});
