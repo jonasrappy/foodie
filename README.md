@@ -6,6 +6,8 @@ The web app runs on a Go server with SQLite. An optional Android app adds hands-
 
 English is the default. Danish is included.
 
+Created and maintained by [Jonas Stenild](https://stenild.io).
+
 ## What it does
 
 - Shopping items with quantities, units and purchased checkboxes.
@@ -277,6 +279,8 @@ Browser and native test commands are documented in `test/README.md` and `test/an
 `make clean` removes Android build intermediates and Python bytecode caches. It keeps the server binary, published APK, local settings, signing keys and databases.
 
 ## License
+
+Copyright (c) 2026 [Jonas Stenild](https://stenild.io).
 
 Foodie's application code is available under the MIT license. Third-party components retain their own licenses; see `THIRD_PARTY_NOTICES.md` and `android/licenses`.
 
